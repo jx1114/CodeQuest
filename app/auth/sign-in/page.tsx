@@ -30,7 +30,7 @@ export default function SignInPage() {
     // Simulate authentication
     setTimeout(() => {
       sessionStorage.setItem("user", JSON.stringify({ email, username: email.split("@")[0] }))
-      router.push("/dashboard")
+      router.push("/challenges")
     }, 700)
   }
 
