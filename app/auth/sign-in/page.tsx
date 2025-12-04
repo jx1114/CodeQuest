@@ -6,11 +6,10 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
 
 export default function SignInPage() {
   const router = useRouter()
-  const [email, setEmail] = useState("")
+  const [usernameOrEmail, setUsernameOrEmail] = useState("")
   const [password, setPassword] = useState("")
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState("")
@@ -21,7 +20,7 @@ export default function SignInPage() {
     setError("")
     setIsLoading(true)
 
-    if (!email || !password) {
+    if (!usernameOrEmail || !password) {
       setError("Please fill in all fields")
       setIsLoading(false)
       return
@@ -29,7 +28,12 @@ export default function SignInPage() {
 
     // Simulate authentication
     setTimeout(() => {
-      sessionStorage.setItem("user", JSON.stringify({ email, username: email.split("@")[0] }))
+      // Determine if input is email or username
+      const isEmail = usernameOrEmail.includes("@")
+      const username = isEmail ? usernameOrEmail.split("@")[0] : usernameOrEmail
+      const email = isEmail ? usernameOrEmail : `${usernameOrEmail}@example.com`
+      
+      sessionStorage.setItem("user", JSON.stringify({ email, username }))
       router.push("/challenges")
     }, 700)
   }
@@ -46,7 +50,7 @@ export default function SignInPage() {
           <CardHeader className="px-8 pt-8">
             <CardTitle className="text-2xl">Sign In</CardTitle>
             <CardDescription className="mt-1 text-sm text-muted-foreground">
-              Use your account to access your dashboard
+              Use your username or email to access your dashboard
             </CardDescription>
           </CardHeader>
 
@@ -59,28 +63,26 @@ export default function SignInPage() {
               )}
 
               <div>
-                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="usernameOrEmail"
+                  type="text"
+                  placeholder="Username or Email"
+                  value={usernameOrEmail}
+                  onChange={(e) => setUsernameOrEmail(e.target.value)}
                   disabled={isLoading}
-                  className="mt-2 h-11 px-4 border-gray-200 focus:border-primary focus:ring-primary transition-colors"
+                  className="h-11 px-4 border-gray-200 focus:border-primary focus:ring-primary transition-colors"
                 />
               </div>
 
               <div>
-                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="mt-2 h-11 px-4 border-gray-200 focus:border-primary focus:ring-primary transition-colors"
+                  className="h-11 px-4 border-gray-200 focus:border-primary focus:ring-primary transition-colors"
                 />
               </div>
 
@@ -124,32 +126,6 @@ export default function SignInPage() {
               <Link href="/auth/sign-up" className="font-medium text-primary hover:underline">
                 Create one
               </Link>
-            </div>
-
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-3 text-muted-foreground">Or continue with</span>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow-md transition"
-                >
-                  Google
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:shadow-md transition"
-                >
-                  GitHub
-                </button>
-              </div>
             </div>
           </CardContent>
         </Card>
