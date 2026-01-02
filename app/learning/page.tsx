@@ -13,7 +13,6 @@ interface Language {
   name: string
   description: string
   icon: string
-  color: string
 }
 
 interface Course {
@@ -74,22 +73,19 @@ export default function LearningPage() {
         id: "1",
         name: "Python",
         description: "Learn Python from basics to advanced concepts. Perfect for beginners and data science.",
-        icon: "🐍",
-        color: "from-yellow-400 to-yellow-600",
+        icon: "/Python-Logo.png",
       },
       {
         id: "2",
         name: "Java",
         description: "Master object-oriented programming with Java. Build enterprise applications.",
-        icon: "☕",
-        color: "from-orange-400 to-red-600",
+        icon: "/Java-Logo.png",
       },
       {
         id: "3",
         name: "C++",
         description: "Dive into systems programming and high-performance applications with C++.",
-        icon: "⚡",
-        color: "from-blue-400 to-blue-600",
+        icon: "/C++-Logo.png",
       },
     ]
     setLanguages(mockLanguages)
@@ -233,10 +229,10 @@ export default function LearningPage() {
     return (
       <>
         <NavigationBar />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center">
           <div className="text-center">
-            <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
-            <p className="text-gray-600">Loading courses...</p>
+            <BookOpen className="w-16 h-16 text-slate-400 mx-auto mb-4 animate-pulse" />
+            <p className="text-slate-600">Loading courses...</p>
           </div>
         </div>
       </>
@@ -248,25 +244,26 @@ export default function LearningPage() {
     return (
       <>
         <NavigationBar />
-        <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="min-h-screen bg-slate-100 p-4 md:p-8">
           <div className="max-w-6xl mx-auto">
             <div className="mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Choose Your Language</h2>
-              <p className="text-gray-600">Select a programming language to begin your learning journey</p>
+              <h2 className="text-3xl font-bold text-slate-900 mb-2">Choose Your Language</h2>
+              <p className="text-slate-600">Select a programming language to begin your learning journey</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {languages.map((lang) => (
                 <Card
                   key={lang.id}
-                  className="cursor-pointer hover:shadow-lg transition-all overflow-hidden"
+                  className="cursor-pointer hover:shadow-md transition-all overflow-hidden bg-white shadow-sm border-0"
                   onClick={() => setSelectedLanguage(lang)}
                 >
-                  <div className={`h-2 ${lang.color}`} />
                   <CardContent className="p-6">
-                    <div className="text-5xl mb-4">{lang.icon}</div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{lang.name}</h3>
-                    <p className="text-sm text-gray-600">{lang.description}</p>
+                    <div className="mb-4 flex items-center justify-center">
+                      <img src={lang.icon} alt={lang.name} className="w-32 h-32 object-contain" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">{lang.name}</h3>
+                    <p className="text-sm text-slate-600">{lang.description}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -285,21 +282,21 @@ export default function LearningPage() {
     return (
       <>
         <NavigationBar />
-        <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="min-h-screen bg-slate-100 p-4 md:p-8">
           <div className="max-w-4xl mx-auto">
             <Button
               variant="outline"
               onClick={() => setSelectedChapter(null)}
-              className="mb-6"
+              className="mb-6 bg-white shadow-sm border-0 hover:shadow-md"
             >
               <ChevronLeft className="w-4 h-4 mr-2" />
               Back to Chapters
             </Button>
 
-            <Card>
+            <Card className="bg-white shadow-sm border-0">
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-slate-500">
                     Chapter {currentIndex + 1} of {chapters.length}
                   </span>
                   {isCompleted && (
@@ -309,8 +306,8 @@ export default function LearningPage() {
                     </span>
                   )}
                 </div>
-                <CardTitle className="text-3xl">{selectedChapter.title}</CardTitle>
-                <p className="text-gray-600 mt-2">{selectedChapter.description}</p>
+                <CardTitle className="text-3xl text-slate-900">{selectedChapter.title}</CardTitle>
+                <p className="text-slate-600 mt-2">{selectedChapter.description}</p>
               </CardHeader>
 
               <CardContent className="space-y-6">
@@ -319,17 +316,17 @@ export default function LearningPage() {
                   dangerouslySetInnerHTML={{ __html: selectedChapter.content }}
                 />
 
-                <div className="pt-6 border-t">
+                <div className="pt-6 border-t border-slate-200">
                   {!isCompleted ? (
                     <Button
                       onClick={() => markChapterComplete(selectedChapter.id)}
-                      className="w-full"
+                      className="w-full bg-blue-600 text-white hover:bg-blue-700"
                       size="lg"
                     >
                       Mark as Complete
                     </Button>
                   ) : (
-                    <div className="flex items-center justify-center space-x-2 text-green-600 bg-green-50 py-4 px-6 rounded-lg">
+                    <div className="flex items-center justify-center space-x-2 text-green-600 bg-green-50 py-4 px-6 rounded-lg border border-green-200">
                       <CheckCircle className="w-5 h-5" />
                       <span className="font-semibold">Chapter Completed!</span>
                     </div>
@@ -349,7 +346,7 @@ export default function LearningPage() {
   return (
     <>
       <NavigationBar />
-      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="min-h-screen bg-slate-100 p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
           <Button
             variant="outline"
@@ -358,26 +355,26 @@ export default function LearningPage() {
               setSelectedCourse(null)
               setChapters([])
             }}
-            className="mb-6"
+            className="mb-6 bg-white shadow-sm border-0 hover:shadow-md"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Back to Languages
           </Button>
 
           {/* Course Progress Card */}
-          <Card className="mb-8">
+          <Card className="mb-8 bg-white shadow-sm border-0">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row md:items-start justify-between mb-6">
                 <div className="mb-4 md:mb-0">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-4xl">{selectedLanguage.icon}</span>
-                    <h2 className="text-3xl font-bold text-gray-900">{selectedLanguage.name}</h2>
+                    <img src={selectedLanguage.icon} alt={selectedLanguage.name} className="w-20 h-20 object-contain" />
+                    <h2 className="text-3xl font-bold text-slate-900">{selectedLanguage.name}</h2>
                   </div>
-                  <p className="text-gray-600">{selectedCourse?.description}</p>
+                  <p className="text-slate-600">{selectedCourse?.description}</p>
                 </div>
                 <div className="text-center md:text-right">
                   <div className="text-4xl font-bold text-blue-600">{completionPercentage}%</div>
-                  <div className="text-sm text-gray-600">Complete</div>
+                  <div className="text-sm text-slate-600">Complete</div>
                 </div>
               </div>
               <Progress value={completionPercentage} className="h-3" />
@@ -386,8 +383,8 @@ export default function LearningPage() {
 
           {/* Chapters List */}
           <div className="mb-4">
-            <h3 className="text-2xl font-bold text-gray-900">Course Chapters</h3>
-            <p className="text-gray-600">Complete each chapter to progress</p>
+            <h3 className="text-2xl font-bold text-slate-900">Course Chapters</h3>
+            <p className="text-slate-600">Complete each chapter to progress</p>
           </div>
 
           <div className="space-y-3">
@@ -396,7 +393,7 @@ export default function LearningPage() {
               return (
                 <Card
                   key={chapter.id}
-                  className="cursor-pointer hover:shadow-md transition-all"
+                  className="cursor-pointer hover:shadow-md transition-all bg-white shadow-sm border-0"
                   onClick={() => setSelectedChapter(chapter)}
                 >
                   <CardContent className="p-6">
@@ -405,17 +402,17 @@ export default function LearningPage() {
                         {isCompleted ? (
                           <CheckCircle className="w-6 h-6 text-green-500" />
                         ) : (
-                          <Circle className="w-6 h-6 text-gray-300" />
+                          <Circle className="w-6 h-6 text-slate-300" />
                         )}
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900 text-lg mb-1">
+                        <h4 className="font-semibold text-slate-900 text-lg mb-1">
                           Chapter {index + 1}: {chapter.title}
                         </h4>
-                        <p className="text-sm text-gray-600">{chapter.description}</p>
+                        <p className="text-sm text-slate-600">{chapter.description}</p>
                       </div>
                       {isCompleted && (
-                        <span className="shrink-0 px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                        <span className="shrink-0 px-3 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-full border border-green-200">
                           Completed
                         </span>
                       )}

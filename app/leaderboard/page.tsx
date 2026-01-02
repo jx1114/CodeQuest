@@ -65,10 +65,10 @@ export default function LeaderboardPage() {
     return (
       <>
         <NavigationBar />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-slate-100radient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
           <div className="text-center">
-            <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-pulse" />
-            <p className="text-gray-600">Loading leaderboard...</p>
+            <Trophy className="w-16 h-16 text-slate-400 mx-auto mb-4 animate-pulse" />
+            <p className="text-slate-600">Loading leaderboard...</p>
           </div>
         </div>
       </>
@@ -80,16 +80,16 @@ export default function LeaderboardPage() {
   return (
     <>
       <NavigationBar />
-      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="min-h-screen bg-slate-100 p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Daily Leaderboard</h2>
-            <p className="text-gray-600">Top performers • Resets daily at 12:00 AM</p>
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">Daily Leaderboard</h2>
+            <p className="text-slate-600">Top performers • Resets daily at 12:00 AM</p>
           </div>
 
           {/* User's Current Rank Card */}
           {userEntry && (
-            <div className="bg-blue-500 rounded-xl shadow-lg p-6 mb-8 text-white">
+            <div className="bg-blue-600 rounded-xl shadow-sm p-6 mb-8 text-white border-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
@@ -114,27 +114,27 @@ export default function LeaderboardPage() {
 
           {/* Leaderboard Table */}
           {entries.length === 0 ? (
-            <Card>
+            <Card className="bg-white shadow-sm border-0">
               <CardContent className="p-8 text-center">
-                <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No Entries Yet</h3>
-                <p className="text-gray-600">Complete challenges to appear on the leaderboard!</p>
+                <Trophy className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">No Entries Yet</h3>
+                <p className="text-slate-600">Complete challenges to appear on the leaderboard!</p>
               </CardContent>
             </Card>
           ) : (
-            <Card className="overflow-hidden">
+            <Card className="overflow-hidden bg-white shadow-sm border-0">
               <CardContent className="p-0 m-0">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50 border-b">
+                    <thead className="bg-slate-50 border-b border-slate-200">
                       <tr>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Rank</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Player</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">XP</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Levels</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">Rank</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">Player</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">XP</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">Levels</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-slate-100">
                       {entries.map((entry) => {
                         const isCurrentUser = entry.username === currentUser?.username
                         return (

@@ -128,12 +128,12 @@ export default function ChallengesPage() {
     return (
       <>
         <NavigationBar />
-        <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="min-h-screen bg-slate-100 p-4 md:p-8">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Challenge Levels</h2>
-                <p className="text-gray-600">Test your programming skills with progressive challenges</p>
+                <h2 className="text-3xl font-bold text-slate-900 mb-2">Challenge Levels</h2>
+                <p className="text-slate-600">Test your programming skills with progressive challenges</p>
               </div>
             </div>
 
@@ -145,8 +145,8 @@ export default function ChallengesPage() {
                 return (
                   <Card
                     key={level.id}
-                    className={`cursor-pointer transition-all ${
-                      unlocked ? "hover:shadow-lg" : "opacity-50 cursor-not-allowed"
+                    className={`cursor-pointer transition-all bg-white shadow-sm border-0 ${
+                      unlocked ? "hover:shadow-md" : "opacity-50 cursor-not-allowed"
                     }`}
                     onClick={() => unlocked && (setSelectedLevel(level), loadChallenges(level.id))}
                   >
@@ -154,7 +154,7 @@ export default function ChallengesPage() {
                       <div className="flex items-start justify-between mb-4">
                         <div
                           className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                            completed ? "bg-green-100" : unlocked ? "bg-blue-100" : "bg-gray-100"
+                            completed ? "bg-green-50 border border-green-200" : unlocked ? "bg-blue-50 border border-blue-200" : "bg-slate-100 border border-slate-200"
                           }`}
                         >
                           {completed ? (
@@ -162,23 +162,23 @@ export default function ChallengesPage() {
                           ) : unlocked ? (
                             <Trophy className="w-6 h-6 text-blue-600" />
                           ) : (
-                            <Lock className="w-6 h-6 text-gray-400" />
+                            <Lock className="w-6 h-6 text-slate-400" />
                           )}
                         </div>
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
                             level.language === "Python"
-                              ? "bg-yellow-100 text-yellow-700"
+                              ? "bg-amber-50 text-amber-700 border border-amber-200"
                               : level.language === "Java"
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-blue-100 text-blue-700"
+                              ? "bg-orange-50 text-orange-700 border border-orange-200"
+                              : "bg-blue-50 text-blue-700 border border-blue-200"
                           }`}
                         >
                           {level.language}
                         </span>
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Level {level.level_number}</h3>
-                      <p className="text-sm text-gray-600">{level.title}</p>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Level {level.level_number}</h3>
+                      <p className="text-sm text-slate-600">{level.title}</p>
                     </CardContent>
                   </Card>
                 )
@@ -193,13 +193,13 @@ export default function ChallengesPage() {
   // Challenge view
   if (!currentChallenge) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="min-h-screen bg-slate-100 p-4 md:p-8">
         <div className="max-w-3xl mx-auto">
-          <Card>
+          <Card className="bg-white shadow-sm border-0">
             <CardContent className="p-8 text-center">
-              <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Challenges Available</h3>
-              <Button onClick={() => setSelectedLevel(null)} className="mt-4">
+              <Trophy className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">No Challenges Available</h3>
+              <Button onClick={() => setSelectedLevel(null)} className="mt-4 bg-blue-600 hover:bg-blue-700">
                 Back to Levels
               </Button>
             </CardContent>
@@ -212,7 +212,7 @@ export default function ChallengesPage() {
   return (
     <>
       <NavigationBar />
-      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="min-h-screen bg-slate-100 p-4 md:p-8">
         <div className="max-w-3xl mx-auto">
           <Button
             variant="outline"
@@ -220,28 +220,28 @@ export default function ChallengesPage() {
               setSelectedLevel(null)
               setChallenges([])
             }}
-            className="mb-6"
+            className="mb-6 bg-white shadow-sm border-0 hover:shadow-md"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Back to Levels
           </Button>
 
-          <Card>
+          <Card className="bg-white shadow-sm border-0">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-2xl">
+                <CardTitle className="text-2xl text-slate-900">
                   Level {selectedLevel.level_number}: {selectedLevel.title}
                 </CardTitle>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-slate-600">
                   {currentChallengeIndex + 1} / {challenges.length}
                 </span>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              <p className="text-gray-700 text-lg">{currentChallenge.question}</p>
+              <p className="text-slate-700 text-lg">{currentChallenge.question}</p>
 
               {currentChallenge.code_snippet && (
-                <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+                <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto border border-slate-700">
                   <code>{currentChallenge.code_snippet}</code>
                 </pre>
               )}
@@ -253,7 +253,7 @@ export default function ChallengesPage() {
                       key={index}
                       onClick={() => setUserAnswer(option)}
                       className={`w-full text-left p-4 rounded-lg border-2 transition ${
-                        userAnswer === option ? "border-blue-600 bg-blue-50" : "border-gray-200 hover:border-blue-300"
+                        userAnswer === option ? "border-blue-600 bg-blue-50" : "border-slate-200 hover:border-blue-300"
                       }`}
                     >
                       {option}
@@ -268,7 +268,7 @@ export default function ChallengesPage() {
                   value={userAnswer}
                   onChange={(e) => setUserAnswer(e.target.value)}
                   placeholder="Enter your answer..."
-                  className="text-base"
+                  className="text-base border-slate-200"
                 />
               )}
 
@@ -294,11 +294,11 @@ export default function ChallengesPage() {
 
               <div>
                 {!feedback ? (
-                  <Button onClick={submitAnswer} disabled={!userAnswer} className="w-full" size="lg">
+                  <Button onClick={submitAnswer} disabled={!userAnswer} className="w-full bg-blue-600 text-white hover:bg-blue-700" size="lg">
                     Submit Answer
                   </Button>
                 ) : (
-                  <Button onClick={nextChallenge} className="w-full" size="lg">
+                  <Button onClick={nextChallenge} className="w-full bg-blue-600 text-white hover:bg-blue-700" size="lg">
                     {currentChallengeIndex < challenges.length - 1 ? "Next Challenge" : "Complete Level"}
                   </Button>
                 )}
