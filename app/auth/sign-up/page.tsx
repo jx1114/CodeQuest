@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { signUp } from "@/lib/auth"
 
 export default function SignUpPage() {
   const router = useRouter()
@@ -39,11 +40,25 @@ export default function SignUpPage() {
 
     setIsLoading(true)
 
-    // Simulate account creation
-    setTimeout(() => {
-      sessionStorage.setItem("user", JSON.stringify({ email, username }))
+    try {
+      // Call Supabase sign up function
+      const result = await signUp({ email, password, username })
+
+      if (!result.success) {
+        setError(result.error || "Failed to create account")
+        setIsLoading(false)
+        return
+      }
+
+      // Store user info in sessionStorage
+      sessionStorage.setItem("user", JSON.stringify({ email, username, id: result.user?.id }))
+
+      // Redirect to challenges page
       router.push("/challenges")
-    }, 500)
+    } catch (err) {
+      setError("An error occurred during sign up")
+      setIsLoading(false)
+    }
   }
 
   return (

@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { signIn } from "@/lib/auth"
 
 export default function SignInPage() {
   const router = useRouter()
-  const [usernameOrEmail, setUsernameOrEmail] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState("")
@@ -20,22 +21,37 @@ export default function SignInPage() {
     setError("")
     setIsLoading(true)
 
-    if (!usernameOrEmail || !password) {
+    if (!email || !password) {
       setError("Please fill in all fields")
       setIsLoading(false)
       return
     }
 
-    // Simulate authentication
-    setTimeout(() => {
-      // Determine if input is email or username
-      const isEmail = usernameOrEmail.includes("@")
-      const username = isEmail ? usernameOrEmail.split("@")[0] : usernameOrEmail
-      const email = isEmail ? usernameOrEmail : `${usernameOrEmail}@example.com`
-      
-      sessionStorage.setItem("user", JSON.stringify({ email, username }))
+    try {
+      const result = await signIn(email, password)
+
+      if (!result.success) {
+        setError(result.error || "Invalid credentials")
+        setIsLoading(false)
+        return
+      }
+
+      // Store user info in sessionStorage
+      sessionStorage.setItem(
+        "user",
+        JSON.stringify({
+          email: result.profile?.email,
+          username: result.profile?.username,
+          id: result.user?.id,
+        })
+      )
+
+      // Redirect to challenges page
       router.push("/challenges")
-    }, 700)
+    } catch (err) {
+      setError("An error occurred during sign in")
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -64,11 +80,11 @@ export default function SignInPage() {
 
               <div>
                 <Input
-                  id="usernameOrEmail"
-                  type="text"
-                  placeholder="Username or Email"
-                  value={usernameOrEmail}
-                  onChange={(e) => setUsernameOrEmail(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
                   className="h-11 px-4 border-gray-200 focus:border-primary focus:ring-primary transition-colors"
                 />

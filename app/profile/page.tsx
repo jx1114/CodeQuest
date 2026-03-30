@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Trophy, BookOpen, Flame, Award, Mail, Calendar, Edit, Target, Code } from "lucide-react"
+import { getProfileProgressSnapshot, type ProfileProgressSnapshot } from "@/lib/progress"
 
 interface CourseStats {
   completed: number
@@ -15,26 +16,28 @@ interface CourseStats {
   xp: number
 }
 
-interface UserProgressType {
-  python: CourseStats
-  java: CourseStats
-  cpp: CourseStats
-  totalXP: number
-  currentStreak: number
-  achievements: string[]
+interface Achievement {
+  id: string
+  name: string
+  icon: string
+  description: string
+  current: number
+  target: number
+  unlocked: boolean
 }
+
+interface UserProgressType extends ProfileProgressSnapshot {}
 
 export default function ProfilePage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
-  
-  const [userProgress] = useState<UserProgressType>({
-    python: { completed: 3, total: 5, xp: 150 },
-    java: { completed: 2, total: 5, xp: 100 },
-    cpp: { completed: 1, total: 5, xp: 50 },
-    totalXP: 300,
-    currentStreak: 5,
-    achievements: ["First Steps", "Rising Star"],
+  const [userProgress, setUserProgress] = useState<UserProgressType>({
+    python: { completed: 0, total: 10, xp: 0 },
+    java: { completed: 0, total: 10, xp: 0 },
+    cpp: { completed: 0, total: 10, xp: 0 },
+    totalXP: 0,
+    currentStreak: 0,
+    achievements: [],
   })
 
   useEffect(() => {
@@ -43,8 +46,18 @@ export default function ProfilePage() {
       router.push("/auth/sign-in")
       return
     }
-    setUser(JSON.parse(userData))
+    const parsedUser = JSON.parse(userData)
+    setUser(parsedUser)
+
+    if (parsedUser?.id) {
+      void loadProfileProgress(parsedUser.id)
+    }
   }, [router])
+
+  const loadProfileProgress = async (userId: string) => {
+    const snapshot = await getProfileProgressSnapshot(userId)
+    setUserProgress(snapshot)
+  }
 
   const languages = [
     { name: "Python", key: "python" as const, icon: "/Python-Logo.png", color: "from-yellow-400 to-yellow-600" },
@@ -59,6 +72,7 @@ export default function ProfilePage() {
   const totalCompleted = userProgress.python.completed + userProgress.java.completed + userProgress.cpp.completed
   const totalLevels = userProgress.python.total + userProgress.java.total + userProgress.cpp.total
   const overallProgress = (totalCompleted / totalLevels) * 100
+  const unlockedAchievements = userProgress.achievements.filter((achievement) => achievement.unlocked).length
 
   return (
     <>
@@ -113,7 +127,7 @@ export default function ProfilePage() {
                       <div className="text-sm text-slate-500">Day Streak</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-slate-900">{userProgress.achievements.length}</div>
+                      <div className="text-3xl font-bold text-slate-900">{unlockedAchievements}</div>
                       <div className="text-sm text-slate-500">Achievements</div>
                     </div>
                   </div>
@@ -234,7 +248,7 @@ export default function ProfilePage() {
                       <Award className="w-5 h-5 text-indigo-600" />
                       <span className="font-medium text-slate-700">Achievements</span>
                     </div>
-                    <span className="text-xl font-bold text-indigo-600">{userProgress.achievements.length}</span>
+                    <span className="text-xl font-bold text-indigo-600">{unlockedAchievements}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -248,23 +262,43 @@ export default function ProfilePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-amber-50 p-4 rounded-lg text-center border border-amber-100">
-                      <div className="text-3xl mb-2">🎯</div>
-                      <div className="text-xs font-semibold text-slate-700">First Steps</div>
-                    </div>
-                    <div className="bg-blue-50 p-4 rounded-lg text-center border border-blue-100">
-                      <div className="text-3xl mb-2">⭐</div>
-                      <div className="text-xs font-semibold text-slate-700">Rising Star</div>
-                    </div>
-                    <div className="bg-slate-100 p-4 rounded-lg text-center border border-slate-200 opacity-50">
-                      <div className="text-3xl mb-2">🔒</div>
-                      <div className="text-xs font-semibold text-slate-500">Locked</div>
-                    </div>
-                    <div className="bg-slate-100 p-4 rounded-lg text-center border border-slate-200 opacity-50">
-                      <div className="text-3xl mb-2">🔒</div>
-                      <div className="text-xs font-semibold text-slate-500">Locked</div>
-                    </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    {userProgress.achievements.map((achievement) => (
+                      <div
+                        key={achievement.id}
+                        className={`p-4 rounded-lg border transition-all ${
+                          achievement.unlocked
+                            ? "bg-linear-to-r from-amber-50 to-amber-100 border-amber-200 hover:shadow-md"
+                            : "bg-slate-50 border-slate-200 opacity-75"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`text-3xl shrink-0 ${achievement.unlocked ? "" : "grayscale opacity-50"}`}>
+                            {achievement.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-slate-900">{achievement.name}</h3>
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <p className="text-sm text-slate-600">{achievement.description}</p>
+                              <span className="text-xs font-bold text-slate-700 whitespace-nowrap">
+                                ({achievement.current}/{achievement.target})
+                              </span>
+                            </div>
+                            {!achievement.unlocked && (
+                              <div className="mt-3">
+                                <Progress value={(achievement.current / achievement.target) * 100} className="h-1.5" />
+                                <p className="text-xs text-slate-500 text-right mt-1">{Math.round((achievement.current / achievement.target) * 100)}%</p>
+                              </div>
+                            )}
+                            {achievement.unlocked && (
+                              <p className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium inline-block mt-2">
+                                ✓ Unlocked
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
