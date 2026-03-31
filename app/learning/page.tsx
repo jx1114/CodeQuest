@@ -444,15 +444,20 @@ export default function LearningPage() {
               {languages.map((lang) => (
                 <Card
                   key={lang.id}
-                  className="cursor-pointer hover:shadow-md transition-all overflow-hidden bg-white shadow-sm border-0"
-                  onClick={() => setSelectedLanguage(lang)}
+                  className="overflow-hidden bg-white shadow-sm border-0 flex flex-col"
                 >
-                  <CardContent className="p-6">
+                  <CardContent className="p-6 flex-1 flex flex-col">
                     <div className="mb-4 flex items-center justify-center">
                       <img src={lang.icon} alt={lang.name} className="w-32 h-32 object-contain" />
                     </div>
                     <h3 className="text-2xl font-bold text-slate-900 mb-2">{lang.name}</h3>
-                    <p className="text-sm text-slate-600">{lang.description}</p>
+                    <p className="text-sm text-slate-600 mb-6 flex-1">{lang.description}</p>
+                    <Button
+                      onClick={() => setSelectedLanguage(lang)}
+                      className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                      Start Learning
+                    </Button>
                   </CardContent>
                 </Card>
               ))}

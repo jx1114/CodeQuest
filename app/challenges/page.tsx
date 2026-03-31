@@ -27,10 +27,18 @@ interface Challenge {
   chapter_hint: string
 }
 
+interface Language {
+  id: string
+  name: "Python" | "Java" | "C++"
+  description: string
+  icon: string
+}
+
 export default function ChallengesPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [levels, setLevels] = useState<ChallengeLevel[]>([])
+  const [selectedLanguage, setSelectedLanguage] = useState<Language | null>(null)
   const [selectedLevel, setSelectedLevel] = useState<ChallengeLevel | null>(null)
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [currentChallengeIndex, setCurrentChallengeIndex] = useState(0)
@@ -60,32 +68,40 @@ export default function ChallengesPage() {
     setCompletedLevels(completed)
   }
 
+  const loadLanguages = () => {
+    // This is called implicitly; languages are shown on first view
+  }
+
   const loadLevels = () => {
     const mockLevels: ChallengeLevel[] = [
-      { id: "1", level_number: 1, title: "Python: Intro & Setup", difficulty: "easy", language: "Python" },
-      { id: "2", level_number: 2, title: "Python: Variables", difficulty: "easy", language: "Python" },
-      { id: "3", level_number: 3, title: "Python: Control Flow", difficulty: "easy", language: "Python" },
-      { id: "4", level_number: 4, title: "Python: Functions", difficulty: "medium", language: "Python" },
-      { id: "5", level_number: 5, title: "Python: Data Structures", difficulty: "medium", language: "Python" },
-      { id: "6", level_number: 6, title: "Java: Intro & Setup", difficulty: "easy", language: "Java" },
-      { id: "7", level_number: 7, title: "Java: Variables", difficulty: "easy", language: "Java" },
-      { id: "8", level_number: 8, title: "Java: Control Flow", difficulty: "medium", language: "Java" },
-      { id: "9", level_number: 9, title: "Java: Functions", difficulty: "medium", language: "Java" },
-      { id: "10", level_number: 10, title: "Java: Data Structures", difficulty: "hard", language: "Java" },
-      { id: "11", level_number: 11, title: "C++: Intro & Setup", difficulty: "easy", language: "C++" },
-      { id: "12", level_number: 12, title: "C++: Variables", difficulty: "easy", language: "C++" },
-      { id: "13", level_number: 13, title: "C++: Control Flow", difficulty: "medium", language: "C++" },
-      { id: "14", level_number: 14, title: "C++: Functions", difficulty: "medium", language: "C++" },
-      { id: "15", level_number: 15, title: "C++: Data Structures", difficulty: "hard", language: "C++" },
+      // Python levels (1-5)
+      { id: "py1", level_number: 1, title: "Intro & Setup", difficulty: "easy", language: "Python" },
+      { id: "py2", level_number: 2, title: "Variables", difficulty: "easy", language: "Python" },
+      { id: "py3", level_number: 3, title: "Control Flow", difficulty: "easy", language: "Python" },
+      { id: "py4", level_number: 4, title: "Functions", difficulty: "medium", language: "Python" },
+      { id: "py5", level_number: 5, title: "Data Structures", difficulty: "medium", language: "Python" },
+      // Java levels (1-5)
+      { id: "java1", level_number: 1, title: "Intro & Setup", difficulty: "easy", language: "Java" },
+      { id: "java2", level_number: 2, title: "Variables", difficulty: "easy", language: "Java" },
+      { id: "java3", level_number: 3, title: "Control Flow", difficulty: "medium", language: "Java" },
+      { id: "java4", level_number: 4, title: "Functions", difficulty: "medium", language: "Java" },
+      { id: "java5", level_number: 5, title: "Data Structures", difficulty: "hard", language: "Java" },
+      // C++ levels (1-5)
+      { id: "cpp1", level_number: 1, title: "Intro & Setup", difficulty: "easy", language: "C++" },
+      { id: "cpp2", level_number: 2, title: "Variables", difficulty: "easy", language: "C++" },
+      { id: "cpp3", level_number: 3, title: "Control Flow", difficulty: "medium", language: "C++" },
+      { id: "cpp4", level_number: 4, title: "Functions", difficulty: "medium", language: "C++" },
+      { id: "cpp5", level_number: 5, title: "Data Structures", difficulty: "hard", language: "C++" },
     ]
     setLevels(mockLevels)
   }
 
   const loadChallenges = (levelId: string) => {
     const challengeByLevel: Record<string, Challenge> = {
-      "1": {
+      // Python challenges
+      "py1": {
         id: "c1",
-        level_id: "1",
+        level_id: "py1",
         title: "Warehouse Receipt Generator",
         scenario:
           "You are building a warehouse tool. Print a receipt for one order with item, quantity, and total units to ship.",
@@ -98,9 +114,9 @@ export default function ChallengesPage() {
         expected_output: "Order Item: USB Cable\nQuantity: 4\nUnits to Ship: 4",
         chapter_hint: "Learning > Python > Chapter 1: Introduction & Setup",
       },
-      "2": {
+      "py2": {
         id: "c2",
-        level_id: "2",
+        level_id: "py2",
         title: "Daily Sales Summary",
         scenario:
           "A cafe wants a quick daily summary. Calculate revenue using fixed values and print rounded to 2 decimals.",
@@ -113,9 +129,9 @@ export default function ChallengesPage() {
         expected_output: "Revenue: 94.50",
         chapter_hint: "Learning > Python > Chapter 2: Variables & Data Types",
       },
-      "3": {
+      "py3": {
         id: "c3",
-        level_id: "3",
+        level_id: "py3",
         title: "Shipping Priority Decision",
         scenario:
           "An e-commerce system chooses shipping mode by package weight.",
@@ -128,9 +144,9 @@ export default function ChallengesPage() {
         expected_output: "Shipping Mode: Express",
         chapter_hint: "Learning > Python > Chapter 3: Control Flow",
       },
-      "4": {
+      "py4": {
         id: "c4",
-        level_id: "4",
+        level_id: "py4",
         title: "Invoice Discount Function",
         scenario:
           "Create a function to apply a fixed discount and print the final invoice total.",
@@ -143,9 +159,9 @@ export default function ChallengesPage() {
         expected_output: "Final Total: 220",
         chapter_hint: "Learning > Python > Chapter 4: Functions",
       },
-      "5": {
+      "py5": {
         id: "c5",
-        level_id: "5",
+        level_id: "py5",
         title: "Inventory Lookup Report",
         scenario:
           "Use a dictionary to store stock and print stock for pen and notebook.",
@@ -158,9 +174,10 @@ export default function ChallengesPage() {
         expected_output: "pen: 12\nnotebook: 5",
         chapter_hint: "Learning > Python > Chapter 5: Data Structures",
       },
-      "6": {
+      // Java challenges
+      "java1": {
         id: "c6",
-        level_id: "6",
+        level_id: "java1",
         title: "Ticket Confirmation (Java)",
         scenario:
           "Create a Java program that prints a confirmation message for a booked ticket.",
@@ -173,9 +190,9 @@ export default function ChallengesPage() {
         expected_output: "Booking Confirmed\nSeat: A12",
         chapter_hint: "Learning > Java > Chapter 1: Introduction & Setup",
       },
-      "7": {
+      "java2": {
         id: "c7",
-        level_id: "7",
+        level_id: "java2",
         title: "Water Bill (Java)",
         scenario: "Calculate total bill using usage and per-unit price.",
         requirements: [
@@ -187,9 +204,9 @@ export default function ChallengesPage() {
         expected_output: "Bill: 31.50",
         chapter_hint: "Learning > Java > Chapter 2: Variables & Data Types",
       },
-      "8": {
+      "java3": {
         id: "c8",
-        level_id: "8",
+        level_id: "java3",
         title: "Loan Risk Flag (Java)",
         scenario: "Flag high risk when credit score is below threshold.",
         requirements: [
@@ -201,9 +218,9 @@ export default function ChallengesPage() {
         expected_output: "Risk: High",
         chapter_hint: "Learning > Java > Chapter 3: Control Flow",
       },
-      "9": {
+      "java4": {
         id: "c9",
-        level_id: "9",
+        level_id: "java4",
         title: "Delivery ETA Function (Java)",
         scenario: "Write a function that adds preparation and travel minutes.",
         requirements: [
@@ -215,9 +232,9 @@ export default function ChallengesPage() {
         expected_output: "ETA Minutes: 30",
         chapter_hint: "Learning > Java > Chapter 4: Functions",
       },
-      "10": {
+      "java5": {
         id: "c10",
-        level_id: "10",
+        level_id: "java5",
         title: "Store Price Lookup (Java)",
         scenario: "Use HashMap to print prices for rice and milk.",
         requirements: [
@@ -229,9 +246,10 @@ export default function ChallengesPage() {
         expected_output: "rice: 12\nmilk: 8",
         chapter_hint: "Learning > Java > Chapter 5: Data Structures",
       },
-      "11": {
+      // C++ challenges
+      "cpp1": {
         id: "c11",
-        level_id: "11",
+        level_id: "cpp1",
         title: "Route Planner Start (C++)",
         scenario: "Print a route planning start message for a logistics app.",
         requirements: [
@@ -243,9 +261,9 @@ export default function ChallengesPage() {
         expected_output: "Route Ready\nTruck: T-17",
         chapter_hint: "Learning > C++ > Chapter 1: Introduction & Setup",
       },
-      "12": {
+      "cpp2": {
         id: "c12",
-        level_id: "12",
+        level_id: "cpp2",
         title: "Fuel Cost (C++)",
         scenario: "Calculate simple fuel cost and print with 2 decimals.",
         requirements: [
@@ -257,9 +275,9 @@ export default function ChallengesPage() {
         expected_output: "Fuel Cost: 33.60",
         chapter_hint: "Learning > C++ > Chapter 2: Variables & Data Types",
       },
-      "13": {
+      "cpp3": {
         id: "c13",
-        level_id: "13",
+        level_id: "cpp3",
         title: "Temperature Alert (C++)",
         scenario: "Classify temperature as Hot or Normal.",
         requirements: [
@@ -271,9 +289,9 @@ export default function ChallengesPage() {
         expected_output: "Alert: Hot",
         chapter_hint: "Learning > C++ > Chapter 3: Control Flow",
       },
-      "14": {
+      "cpp4": {
         id: "c14",
-        level_id: "14",
+        level_id: "cpp4",
         title: "Packing Time Function (C++)",
         scenario: "Create function to compute packing time for boxes.",
         requirements: [
@@ -285,9 +303,9 @@ export default function ChallengesPage() {
         expected_output: "Packing Minutes: 18",
         chapter_hint: "Learning > C++ > Chapter 4: Functions",
       },
-      "15": {
+      "cpp5": {
         id: "c15",
-        level_id: "15",
+        level_id: "cpp5",
         title: "Exam Score Lookup (C++)",
         scenario: "Use map to store and print score for Bob.",
         requirements: [
@@ -408,7 +426,12 @@ export default function ChallengesPage() {
   const nextChallenge = () => {
     if (!selectedLevel) return
 
-    const nextLevel = levels.find((level) => level.level_number === selectedLevel.level_number + 1)
+    // Find next level in the same language
+    const nextLevel = levels.find(
+      (level) =>
+        level.language === selectedLevel.language &&
+        level.level_number === selectedLevel.level_number + 1
+    )
 
     if (nextLevel) {
       setSelectedLevel(nextLevel)
@@ -423,31 +446,88 @@ export default function ChallengesPage() {
     setExecutionError("")
   }
 
-  const isLevelUnlocked = (levelNumber: number) => {
-    if (levelNumber === 1) return true
-    const previousLevel = levels.find((l) => l.level_number === levelNumber - 1)
+  const isLevelUnlocked = (level: ChallengeLevel) => {
+    if (level.level_number === 1) return true
+    const previousLevel = levels.find(
+      (l) => l.language === level.language && l.level_number === level.level_number - 1
+    )
     return previousLevel ? completedLevels.has(previousLevel.id) : false
   }
 
   const currentChallenge = challenges[currentChallengeIndex]
 
-  // Level selection view
-  if (!selectedLevel) {
+  // Language selection view
+  if (!selectedLanguage) {
+    const languages: Language[] = [
+      { id: "1", name: "Python", description: "Learn Python from basics to advanced concepts.", icon: "/Python-Logo.png" },
+      { id: "2", name: "Java", description: "Master object-oriented programming with Java.", icon: "/Java-Logo.png" },
+      { id: "3", name: "C++", description: "Dive into systems programming with C++.", icon: "/C++-Logo.png" },
+    ]
+
     return (
       <>
         <NavigationBar />
         <div className="min-h-screen bg-slate-100 p-4 md:p-8">
           <div className="max-w-6xl mx-auto">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-slate-900 mb-2">Choose Language</h2>
+              <p className="text-slate-600">Select a programming language to begin your challenges</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {languages.map((lang) => (
+                <Card
+                  key={lang.id}
+                  className="cursor-pointer hover:shadow-md transition-all overflow-hidden bg-white shadow-sm border-0"
+                  onClick={() => setSelectedLanguage(lang)}
+                >
+                  <CardContent className="p-6">
+                    <div className="mb-4 flex items-center justify-center">
+                      <img src={lang.icon} alt={lang.name} className="w-32 h-32 object-contain" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">{lang.name}</h3>
+                    <p className="text-sm text-slate-600">{lang.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // Level selection view
+  if (!selectedLevel) {
+    const filteredLevels = levels.filter((level) => level.language === selectedLanguage.name)
+
+    return (
+      <>
+        <NavigationBar />
+        <div className="min-h-screen bg-slate-100 p-4 md:p-8">
+          <div className="max-w-6xl mx-auto">
+            <Button
+              variant="outline"
+              onClick={() => setSelectedLanguage(null)}
+              className="mb-6 bg-white shadow-sm border-0 hover:shadow-md"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Back to Languages
+            </Button>
+
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-3xl font-bold text-slate-900 mb-2">Challenge Levels</h2>
+                <div className="flex items-center gap-3 mb-2">
+                  <img src={selectedLanguage.icon} alt={selectedLanguage.name} className="w-20 h-20 object-contain" />
+                  <h2 className="text-3xl font-bold text-slate-900">{selectedLanguage.name} Challenges</h2>
+                </div>
                 <p className="text-slate-600">Test your programming skills with progressive challenges</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {levels.map((level) => {
-                const unlocked = isLevelUnlocked(level.level_number)
+              {filteredLevels.map((level) => {
+                const unlocked = isLevelUnlocked(level)
                 const completed = completedLevels.has(level.id)
 
                 return (
@@ -473,17 +553,6 @@ export default function ChallengesPage() {
                             <Lock className="w-6 h-6 text-slate-400" />
                           )}
                         </div>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            level.language === "Python"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : level.language === "Java"
-                              ? "bg-orange-50 text-orange-700 border border-orange-200"
-                              : "bg-blue-50 text-blue-700 border border-blue-200"
-                          }`}
-                        >
-                          {level.language}
-                        </span>
                       </div>
                       <h3 className="text-lg font-semibold text-slate-900 mb-2">Level {level.level_number}</h3>
                       <p className="text-sm text-slate-600">{level.title}</p>
@@ -595,7 +664,7 @@ export default function ChallengesPage() {
                   )}
                   <div>
                     <p className={`font-semibold ${feedback.correct ? "text-green-900" : "text-red-900"}`}>
-                      {feedback.correct ? "Correct!" : "Incorrect"}
+                      {feedback.correct ? "Correct! +50 XP" : "Incorrect"}
                     </p>
                     <p className={feedback.correct ? "text-green-700" : "text-red-700"}>{feedback.message}</p>
                   </div>
