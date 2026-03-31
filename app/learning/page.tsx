@@ -6,7 +6,7 @@ import NavigationBar from "@/components/NavigationBar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { ChevronLeft, CheckCircle, Circle, Code, BookOpen } from "lucide-react"
+import { ChevronLeft, CheckCircle, Circle, Code, BookOpen, Award } from "lucide-react"
 import { getCompletedChaptersForCourse, markLearningChapterComplete } from "@/lib/progress"
 
 interface Language {
@@ -38,6 +38,15 @@ interface Chapter {
   order_index: number
 }
 
+interface Certificate {
+  id: string
+  languageId: string
+  languageName: string
+  userName: string
+  issuedAt: string
+  totalChapters: number
+}
+
 export default function LearningPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
@@ -55,6 +64,10 @@ export default function LearningPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [loading, setLoading] = useState(true)
   const [pendingNavigation, setPendingNavigation] = useState<{ language: string; chapterNumber: number } | null>(null)
+  const [generatedCertificates, setGeneratedCertificates] = useState<Map<string, Certificate>>(new Map())
+  const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null)
+  const [showCertificateModal, setShowCertificateModal] = useState(false)
+  const [showCertificateReady, setShowCertificateReady] = useState(false)
 
   useEffect(() => {
     const userData = sessionStorage.getItem("user")
@@ -85,6 +98,28 @@ export default function LearningPage() {
   }, [selectedLanguage])
 
   useEffect(() => {
+    if (!user?.id) return
+
+    const savedCertificates = localStorage.getItem(`codequest-certificates-${user.id}`)
+    if (!savedCertificates) {
+      setGeneratedCertificates(new Map())
+      return
+    }
+
+    try {
+      const parsed: Certificate[] = JSON.parse(savedCertificates)
+      const certMap = new Map<string, Certificate>()
+      parsed.forEach((certificate) => {
+        certMap.set(certificate.languageId, certificate)
+      })
+      setGeneratedCertificates(certMap)
+    } catch (error) {
+      console.error("Failed to parse certificates:", error)
+      setGeneratedCertificates(new Map())
+    }
+  }, [user?.id])
+
+  useEffect(() => {
     if (selectedCourse) {
       void loadChapters(selectedCourse.id, selectedLanguage?.id)
     }
@@ -96,6 +131,34 @@ export default function LearningPage() {
     setExecutionOutput("")
     setExecutionError("")
   }, [selectedChapter?.id])
+
+  useEffect(() => {
+    if (!user?.id || !selectedLanguage || chapters.length === 0) return
+
+    const allCompleted = chapters.every((chapter) => progress.get(chapter.id))
+    const alreadyGenerated = generatedCertificates.has(selectedLanguage.id)
+
+    if (allCompleted && !alreadyGenerated) {
+      const userName = user?.name || user?.username || user?.email || "CodeQuest Learner"
+      const newCertificate: Certificate = {
+        id: `CERT-${selectedLanguage.name.toUpperCase()}-${Date.now()}`,
+        languageId: selectedLanguage.id,
+        languageName: selectedLanguage.name,
+        userName,
+        issuedAt: new Date().toISOString(),
+        totalChapters: chapters.length,
+      }
+
+      setGeneratedCertificates((prev) => {
+        const next = new Map(prev)
+        next.set(selectedLanguage.id, newCertificate)
+        localStorage.setItem(`codequest-certificates-${user.id}`, JSON.stringify(Array.from(next.values())))
+        return next
+      })
+
+      setShowCertificateReady(true)
+    }
+  }, [progress, chapters, selectedLanguage, generatedCertificates, user])
 
   // Handle navigation from challenges page
   useEffect(() => {
@@ -414,6 +477,14 @@ export default function LearningPage() {
     return Math.round((completed / chapters.length) * 100)
   }
 
+  const openCertificate = () => {
+    if (!selectedLanguage) return
+    const certificate = generatedCertificates.get(selectedLanguage.id)
+    if (!certificate) return
+    setSelectedCertificate(certificate)
+    setShowCertificateModal(true)
+  }
+
   if (loading) {
     return (
       <>
@@ -574,6 +645,7 @@ export default function LearningPage() {
 
   // Chapters List View
   const completionPercentage = getCompletionPercentage()
+  const currentCertificate = selectedLanguage ? generatedCertificates.get(selectedLanguage.id) : null
 
   return (
     <>
@@ -610,6 +682,39 @@ export default function LearningPage() {
                 </div>
               </div>
               <Progress value={completionPercentage} className="h-3" />
+
+              {completionPercentage === 100 && currentCertificate && (
+                <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center gap-2 text-emerald-800">
+                    <Award className="w-5 h-5" />
+                    <span className="font-semibold">Certificate generated for {selectedLanguage.name}.</span>
+                  </div>
+                  <Button onClick={openCertificate} className="bg-emerald-600 text-white hover:bg-emerald-700">
+                    View Certificate
+                  </Button>
+                </div>
+              )}
+
+              {showCertificateReady && completionPercentage === 100 && (
+                <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <p className="text-blue-800 font-medium">Nice work! Your certificate is ready.</p>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={openCertificate}
+                      className="bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                      View Now
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowCertificateReady(false)}
+                      className="bg-white"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -656,6 +761,40 @@ export default function LearningPage() {
           </div>
         </div>
       </div>
+
+      {showCertificateModal && selectedCertificate && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl bg-white border-0 shadow-2xl">
+            <CardContent className="p-8">
+              <div className="rounded-xl border-4 border-amber-200 bg-linear-to-br from-amber-50 to-white p-8 text-center">
+                <Award className="w-14 h-14 text-amber-500 mx-auto mb-4" />
+                <p className="text-sm uppercase tracking-[0.25em] text-slate-500 mb-2">Certificate of Completion</p>
+                <h3 className="text-3xl font-bold text-slate-900 mb-6">CodeQuest Achievement</h3>
+
+                <p className="text-slate-600 mb-2">This certifies that</p>
+                <p className="text-2xl font-bold text-slate-900 mb-5">{selectedCertificate.userName}</p>
+
+                <p className="text-slate-600 mb-2">has successfully completed all {selectedCertificate.totalChapters} chapters in</p>
+                <p className="text-xl font-semibold text-blue-700 mb-6">{selectedCertificate.languageName}</p>
+
+                <div className="text-sm text-slate-500 space-y-1">
+                  <p>Certificate ID: {selectedCertificate.id}</p>
+                  <p>Issued on: {new Date(selectedCertificate.issuedAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <Button
+                  onClick={() => setShowCertificateModal(false)}
+                  className="bg-gray-100 text-black hover:bg-gray-200 border border-gray-300 shadow-md hover:shadow-lg active:translate-y-px active:shadow-sm transition-all"
+                >
+                  Close
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </>
   )
 }

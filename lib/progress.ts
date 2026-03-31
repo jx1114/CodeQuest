@@ -16,6 +16,10 @@ export interface ChallengeLevelProgressInput {
 export interface ProfileCourseStats {
   completed: number
   total: number
+  learningCompleted: number
+  learningTotal: number
+  challengeCompleted: number
+  challengeTotal: number
   xp: number
 }
 
@@ -59,9 +63,33 @@ const CHALLENGE_TOTALS = {
 const LEARNING_TOTAL_PER_LANGUAGE = 5
 
 const defaultSnapshot: ProfileProgressSnapshot = {
-  python: { completed: 0, total: LEARNING_TOTAL_PER_LANGUAGE + CHALLENGE_TOTALS.python, xp: 0 },
-  java: { completed: 0, total: LEARNING_TOTAL_PER_LANGUAGE + CHALLENGE_TOTALS.java, xp: 0 },
-  cpp: { completed: 0, total: LEARNING_TOTAL_PER_LANGUAGE + CHALLENGE_TOTALS.cpp, xp: 0 },
+  python: {
+    completed: 0,
+    total: LEARNING_TOTAL_PER_LANGUAGE + CHALLENGE_TOTALS.python,
+    learningCompleted: 0,
+    learningTotal: LEARNING_TOTAL_PER_LANGUAGE,
+    challengeCompleted: 0,
+    challengeTotal: CHALLENGE_TOTALS.python,
+    xp: 0,
+  },
+  java: {
+    completed: 0,
+    total: LEARNING_TOTAL_PER_LANGUAGE + CHALLENGE_TOTALS.java,
+    learningCompleted: 0,
+    learningTotal: LEARNING_TOTAL_PER_LANGUAGE,
+    challengeCompleted: 0,
+    challengeTotal: CHALLENGE_TOTALS.java,
+    xp: 0,
+  },
+  cpp: {
+    completed: 0,
+    total: LEARNING_TOTAL_PER_LANGUAGE + CHALLENGE_TOTALS.cpp,
+    learningCompleted: 0,
+    learningTotal: LEARNING_TOTAL_PER_LANGUAGE,
+    challengeCompleted: 0,
+    challengeTotal: CHALLENGE_TOTALS.cpp,
+    xp: 0,
+  },
   totalXP: 0,
   currentStreak: 0,
   achievements: [],
@@ -198,6 +226,7 @@ export async function getProfileProgressSnapshot(userId: string): Promise<Profil
         const key = LANGUAGE_ID_TO_KEY[String(row.language_id)]
         if (!key) continue
         snapshot[key].completed += 1
+        snapshot[key].learningCompleted += 1
         snapshot[key].xp += 25
       }
     }
@@ -207,6 +236,7 @@ export async function getProfileProgressSnapshot(userId: string): Promise<Profil
         const key = LANGUAGE_NAME_TO_KEY[String(row.language).toLowerCase()]
         if (!key) continue
         snapshot[key].completed += 1
+        snapshot[key].challengeCompleted += 1
         snapshot[key].xp += 100
       }
     }

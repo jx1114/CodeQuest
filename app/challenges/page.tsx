@@ -689,6 +689,7 @@ export default function ChallengesPage() {
                             setFeedback(null)
                             setExecutionOutput("")
                             setExecutionError("")
+                            setUserAnswer(currentChallenge.starter_code)
                           }}
                           className="w-full bg-slate-700 text-white hover:bg-slate-800"
                           size="lg"

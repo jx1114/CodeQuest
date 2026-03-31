@@ -28,13 +28,25 @@ interface Achievement {
 
 interface UserProgressType extends ProfileProgressSnapshot {}
 
+interface GeneratedCertificate {
+  id: string
+  languageId: string
+  languageName: string
+  userName: string
+  issuedAt: string
+  totalChapters: number
+}
+
 export default function ProfilePage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
+  const [certificates, setCertificates] = useState<Map<string, GeneratedCertificate>>(new Map())
+  const [selectedCertificate, setSelectedCertificate] = useState<GeneratedCertificate | null>(null)
+  const [showCertificateModal, setShowCertificateModal] = useState(false)
   const [userProgress, setUserProgress] = useState<UserProgressType>({
-    python: { completed: 0, total: 10, xp: 0 },
-    java: { completed: 0, total: 10, xp: 0 },
-    cpp: { completed: 0, total: 10, xp: 0 },
+    python: { completed: 0, total: 10, learningCompleted: 0, learningTotal: 5, challengeCompleted: 0, challengeTotal: 5, xp: 0 },
+    java: { completed: 0, total: 10, learningCompleted: 0, learningTotal: 5, challengeCompleted: 0, challengeTotal: 5, xp: 0 },
+    cpp: { completed: 0, total: 10, learningCompleted: 0, learningTotal: 5, challengeCompleted: 0, challengeTotal: 5, xp: 0 },
     totalXP: 0,
     currentStreak: 0,
     achievements: [],
@@ -51,12 +63,40 @@ export default function ProfilePage() {
 
     if (parsedUser?.id) {
       void loadProfileProgress(parsedUser.id)
+      loadCertificates(parsedUser.id)
     }
   }, [router])
 
   const loadProfileProgress = async (userId: string) => {
     const snapshot = await getProfileProgressSnapshot(userId)
     setUserProgress(snapshot)
+  }
+
+  const loadCertificates = (userId: string) => {
+    const savedCertificates = localStorage.getItem(`codequest-certificates-${userId}`)
+    if (!savedCertificates) {
+      setCertificates(new Map())
+      return
+    }
+
+    try {
+      const parsed: GeneratedCertificate[] = JSON.parse(savedCertificates)
+      const certMap = new Map<string, GeneratedCertificate>()
+      parsed.forEach((certificate) => {
+        certMap.set(certificate.languageName.toLowerCase(), certificate)
+      })
+      setCertificates(certMap)
+    } catch (error) {
+      console.error("Failed to parse certificates", error)
+      setCertificates(new Map())
+    }
+  }
+
+  const openCertificateByLanguage = (languageName: string) => {
+    const certificate = certificates.get(languageName.toLowerCase())
+    if (!certificate) return
+    setSelectedCertificate(certificate)
+    setShowCertificateModal(true)
   }
 
   const languages = [
@@ -169,7 +209,7 @@ export default function ProfilePage() {
               
               {languages.map((lang) => {
                 const progress = userProgress[lang.key]
-                const percentage = (progress.completed / progress.total) * 100
+                const percentage = progress.learningTotal > 0 ? (progress.learningCompleted / progress.learningTotal) * 100 : 0
 
                 return (
                   <Card key={lang.name} className="overflow-hidden bg-white shadow-sm border-0 hover:shadow-md transition-shadow">
@@ -181,7 +221,7 @@ export default function ProfilePage() {
                           <div>
                             <h3 className="text-xl font-bold text-slate-900">{lang.name}</h3>
                             <p className="text-sm text-slate-500">
-                              {progress.completed} of {progress.total} levels completed
+                              {progress.learningCompleted} of {progress.learningTotal} chapters completed
                             </p>
                           </div>
                         </div>
@@ -195,12 +235,19 @@ export default function ProfilePage() {
                         <Progress value={percentage} className="h-2" />
                         <div className="flex justify-between text-xs text-slate-500">
                           <span>{Math.round(percentage)}% complete</span>
-                          <span>{progress.total - progress.completed} levels remaining</span>
+                          <span>{progress.learningTotal - progress.learningCompleted} chapters remaining</span>
                         </div>
                       </div>
 
-                      <Button 
-                        className={`w-full mt-4 ${percentage === 100 ? "bg-green-600 hover:bg-green-700" : "bg-blue-500 hover:bg-blue-700 text-white"}`}
+                      <Button
+                        onClick={() => {
+                          if (percentage === 100) {
+                            openCertificateByLanguage(lang.name)
+                            return
+                          }
+                          router.push("/learning")
+                        }}
+                        className="w-full mt-4 bg-blue-500 hover:bg-blue-700 text-white"
                         variant={percentage === 100 ? "default" : "default"}
                       >
                         {percentage === 100 ? "View Certificate" : "Continue Learning"}
@@ -306,6 +353,40 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {showCertificateModal && selectedCertificate && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl bg-white border-0 shadow-2xl">
+            <CardContent className="p-8">
+              <div className="rounded-xl border-4 border-amber-200 bg-linear-to-br from-amber-50 to-white p-8 text-center">
+                <Award className="w-14 h-14 text-amber-500 mx-auto mb-4" />
+                <p className="text-sm uppercase tracking-[0.25em] text-slate-500 mb-2">Certificate of Completion</p>
+                <h3 className="text-3xl font-bold text-slate-900 mb-6">CodeQuest Achievement</h3>
+
+                <p className="text-slate-600 mb-2">This certifies that</p>
+                <p className="text-2xl font-bold text-slate-900 mb-5">{selectedCertificate.userName}</p>
+
+                <p className="text-slate-600 mb-2">has successfully completed all {selectedCertificate.totalChapters} chapters in</p>
+                <p className="text-xl font-semibold text-blue-700 mb-6">{selectedCertificate.languageName}</p>
+
+                <div className="text-sm text-slate-500 space-y-1">
+                  <p>Certificate ID: {selectedCertificate.id}</p>
+                  <p>Issued on: {new Date(selectedCertificate.issuedAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <Button
+                  onClick={() => setShowCertificateModal(false)}
+                  className="bg-gray-100 text-black hover:bg-gray-200 border border-gray-300 shadow-md hover:shadow-lg active:translate-y-px active:shadow-sm transition-all"
+                >
+                  Close
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </>
   )
 }
