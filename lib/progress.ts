@@ -313,24 +313,51 @@ export async function markChallengeLevelComplete({ userId, levelId, language }: 
       return
     }
 
-    // Count unique levels and calculate total XP
+    // Count unique levels, per-language level counts, and total XP
     let totalXP = 0
     const uniqueLevels = new Set<string>()
+    const perLanguageLevels = {
+      python: new Set<string>(),
+      java: new Set<string>(),
+      cpp: new Set<string>(),
+    }
+
     for (const completion of allCompletions ?? []) {
       uniqueLevels.add(completion.level_id)
-      totalXP += parseStoredLanguages(completion.language).length * 50 // 50 XP per language per level
+      const solvedLanguages = parseStoredLanguages(completion.language)
+      totalXP += solvedLanguages.length * 50 // 50 XP per language per level
+
+      for (const solvedLanguage of solvedLanguages) {
+        const key = LANGUAGE_NAME_TO_KEY[String(solvedLanguage).toLowerCase()]
+        if (!key) continue
+        perLanguageLevels[key].add(completion.level_id)
+      }
     }
 
     const uniqueLevelsCompleted = uniqueLevels.size
-
-    await supabase
+    const extendedUpdate = await supabase
       .from("leaderboard_stats")
       .update({
         challenges_completed: uniqueLevelsCompleted,
         total_points: totalXP,
+        python_levels_done: perLanguageLevels.python.size,
+        java_levels_done: perLanguageLevels.java.size,
+        cpp_levels_done: perLanguageLevels.cpp.size,
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", userId)
+
+    // Fallback for DB schemas that do not yet have per-language columns.
+    if (extendedUpdate.error) {
+      await supabase
+        .from("leaderboard_stats")
+        .update({
+          challenges_completed: uniqueLevelsCompleted,
+          total_points: totalXP,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+    }
   } catch (error) {
     console.warn("Failed to store challenge level progress", error)
   }
@@ -406,6 +433,33 @@ export async function getProfileProgressSnapshot(userId: string): Promise<Profil
     let challengeRows = challengeResult.data
     let challengeError = challengeResult.error
 
+    let leaderboardStats: {
+      total_points: number | null
+      python_levels_done?: number | null
+      java_levels_done?: number | null
+      cpp_levels_done?: number | null
+    } | null = null
+
+    const leaderboardStatsWithLevels = await supabase
+      .from("leaderboard_stats")
+      .select("total_points,python_levels_done,java_levels_done,cpp_levels_done")
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (!leaderboardStatsWithLevels.error && leaderboardStatsWithLevels.data) {
+      leaderboardStats = leaderboardStatsWithLevels.data
+    } else {
+      const leaderboardStatsFallback = await supabase
+        .from("leaderboard_stats")
+        .select("total_points")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (!leaderboardStatsFallback.error && leaderboardStatsFallback.data) {
+        leaderboardStats = leaderboardStatsFallback.data
+      }
+    }
+
     // Fallback for schemas without `completed` column
     if (challengeError) {
       const fallbackChallengeRead = await supabase
@@ -462,8 +516,31 @@ export async function getProfileProgressSnapshot(userId: string): Promise<Profil
       snapshot.currentStreak = Math.max(1, Number(statsResult.data.current_streak ?? 1))
     }
 
+    // Prefer DB-stored per-language level progress when available.
+    const dbPythonLevels = Number(leaderboardStats?.python_levels_done)
+    const dbJavaLevels = Number(leaderboardStats?.java_levels_done)
+    const dbCppLevels = Number(leaderboardStats?.cpp_levels_done)
+    const hasStoredLanguageLevels = Number.isFinite(dbPythonLevels) && Number.isFinite(dbJavaLevels) && Number.isFinite(dbCppLevels)
+
+    if (hasStoredLanguageLevels) {
+      snapshot.python.challengeCompleted = dbPythonLevels
+      snapshot.java.challengeCompleted = dbJavaLevels
+      snapshot.cpp.challengeCompleted = dbCppLevels
+
+      snapshot.python.xp = dbPythonLevels * 50
+      snapshot.java.xp = dbJavaLevels * 50
+      snapshot.cpp.xp = dbCppLevels * 50
+
+      snapshot.python.completed = snapshot.python.learningCompleted + snapshot.python.challengeCompleted
+      snapshot.java.completed = snapshot.java.learningCompleted + snapshot.java.challengeCompleted
+      snapshot.cpp.completed = snapshot.cpp.learningCompleted + snapshot.cpp.challengeCompleted
+    }
+
     // Keep total XP aligned with challenge-only XP model
-    if (snapshot.totalXP === 0) {
+    const dbTotalPoints = Number(leaderboardStats?.total_points)
+    if (Number.isFinite(dbTotalPoints)) {
+      snapshot.totalXP = dbTotalPoints
+    } else if (snapshot.totalXP === 0) {
       snapshot.totalXP = snapshot.python.xp + snapshot.java.xp + snapshot.cpp.xp
     }
 

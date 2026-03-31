@@ -6,8 +6,6 @@ import NavigationBar from "@/components/NavigationBar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Trophy, Medal, Award } from "lucide-react"
 
-type LeaderboardType = "overall" | "python" | "java" | "cpp"
-
 interface LeaderboardPlayer {
   userId: string
   username: string
@@ -29,7 +27,6 @@ interface LeaderboardRow {
 export default function LeaderboardPage() {
   const router = useRouter()
   const [players, setPlayers] = useState<LeaderboardPlayer[]>([])
-  const [activeBoard, setActiveBoard] = useState<LeaderboardType>("overall")
   const [loading, setLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState<any>(null)
 
@@ -43,45 +40,45 @@ export default function LeaderboardPage() {
     loadLeaderboard()
   }, [router])
 
-  const loadLeaderboard = () => {
-    // Mock data - replace with your API call
-    const mockPlayers: LeaderboardPlayer[] = [
-      { userId: "user1", username: "CodeMaster", totalXP: 2500, levels: { python: 9, java: 8, cpp: 8 } },
-      { userId: "user2", username: "PythonPro", totalXP: 2300, levels: { python: 10, java: 7, cpp: 6 } },
-      { userId: "user3", username: "JavaGuru", totalXP: 2100, levels: { python: 6, java: 10, cpp: 5 } },
-      { userId: "user4", username: "CppNinja", totalXP: 1900, levels: { python: 5, java: 6, cpp: 8 } },
-      { userId: "user5", username: "DevExpert", totalXP: 1700, levels: { python: 6, java: 6, cpp: 5 } },
-      { userId: "user6", username: "WebWizard", totalXP: 1500, levels: { python: 5, java: 5, cpp: 5 } },
-      { userId: "user7", username: "BugHunter", totalXP: 1300, levels: { python: 4, java: 4, cpp: 5 } },
-      { userId: "user8", username: "AlgoAce", totalXP: 1100, levels: { python: 4, java: 4, cpp: 3 } },
-      { userId: "user9", username: "DataDev", totalXP: 900, levels: { python: 3, java: 3, cpp: 3 } },
-      { userId: "user10", username: "StackMaster", totalXP: 700, levels: { python: 2, java: 2, cpp: 3 } },
-    ]
-    setPlayers(mockPlayers)
-    setLoading(false)
+  const loadLeaderboard = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch("/api/leaderboard", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({ error: "Unknown error" }))
+        console.warn("Failed to load leaderboard", payload)
+        setPlayers([])
+        return
+      }
+
+      const payload = (await response.json()) as { players?: LeaderboardPlayer[] }
+      setPlayers(Array.isArray(payload.players) ? payload.players : [])
+    } catch (error) {
+      console.warn("Failed to load leaderboard", error)
+      setPlayers([])
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const getLeaderboardRows = (type: LeaderboardType): LeaderboardRow[] => {
-    const sorted = [...players].sort((a, b) => {
-      if (type === "overall") return b.totalXP - a.totalXP
-      return b.levels[type] - a.levels[type]
-    })
+  const getLeaderboardRows = (): LeaderboardRow[] => {
+    const sorted = [...players].sort((a, b) => b.totalXP - a.totalXP)
 
     return sorted.map((player, index) => ({
       rank: index + 1,
       userId: player.userId,
       username: player.username,
-      value: type === "overall" ? player.totalXP : player.levels[type],
+      value: player.totalXP,
     }))
   }
 
-  const boardRows = getLeaderboardRows(activeBoard)
-  const userEntry = boardRows.find((e) => e.username === currentUser?.username)
-  const boardTitle =
-    activeBoard === "overall"
-      ? "Overall Leaderboard"
-      : `${activeBoard.charAt(0).toUpperCase()}${activeBoard.slice(1)} Leaderboard`
-  const valueHeader = activeBoard === "overall" ? "Total XP" : "Levels Done"
+  const boardRows = getLeaderboardRows()
+  const userEntry = boardRows.find((e) => e.userId === currentUser?.id)
+  const valueHeader = "Total XP"
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -100,7 +97,7 @@ export default function LeaderboardPage() {
     return (
       <>
         <NavigationBar />
-        <div className="min-h-screen bg-slate-100radient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center">
           <div className="text-center">
             <Trophy className="w-16 h-16 text-slate-400 mx-auto mb-4 animate-pulse" />
             <p className="text-slate-600">Loading leaderboard...</p>
@@ -120,27 +117,6 @@ export default function LeaderboardPage() {
             <p className="text-slate-600">Top performers • Resets daily at 12:00 AM</p>
           </div>
 
-          <div className="mb-6 flex flex-wrap gap-2">
-            {([
-              { key: "overall", label: "Overall" },
-              { key: "python", label: "Python" },
-              { key: "java", label: "Java" },
-              { key: "cpp", label: "C++" },
-            ] as Array<{ key: LeaderboardType; label: string }>).map((item) => (
-              <button
-                key={item.key}
-                onClick={() => setActiveBoard(item.key)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
-                  activeBoard === item.key
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
           {/* User's Current Rank Card */}
           {userEntry && (
             <div className="bg-blue-600 rounded-xl shadow-sm p-6 mb-8 text-white border-0">
@@ -158,7 +134,6 @@ export default function LeaderboardPage() {
                   <p className="text-blue-100 mb-1 text-sm">{valueHeader}</p>
                   <p className="text-3xl font-bold">
                     {userEntry.value.toLocaleString()}
-                    {activeBoard === "overall" ? "" : ""}
                   </p>
                 </div>
               </div>
@@ -188,7 +163,7 @@ export default function LeaderboardPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {boardRows.map((entry) => {
-                        const isCurrentUser = entry.username === currentUser?.username
+                        const isCurrentUser = entry.userId === currentUser?.id
                         return (
                           <tr
                             key={entry.userId}
@@ -218,7 +193,7 @@ export default function LeaderboardPage() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="text-sm font-semibold text-gray-900">{entry.value.toLocaleString()}</span>
-                              {activeBoard === "overall" && <span className="text-xs text-gray-500 ml-1">XP</span>}
+                              <span className="text-xs text-gray-500 ml-1">XP</span>
                             </td>
                           </tr>
                         )
