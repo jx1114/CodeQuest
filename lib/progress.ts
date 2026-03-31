@@ -62,6 +62,83 @@ const CHALLENGE_TOTALS = {
 
 const LEARNING_TOTAL_PER_LANGUAGE = 5
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000
+
+const normalizeChallengeLanguage = (value: string): "Python" | "Java" | "C++" | null => {
+  const normalized = value.trim().toLowerCase()
+  if (normalized === "python") return "Python"
+  if (normalized === "java") return "Java"
+  if (normalized === "c++" || normalized === "cpp") return "C++"
+  return null
+}
+
+const parseStoredLanguages = (value: unknown): Array<"Python" | "Java" | "C++"> => {
+  if (typeof value !== "string") return []
+  const parts = value
+    .split(/[,|]/)
+    .map((item) => normalizeChallengeLanguage(item))
+    .filter((item): item is "Python" | "Java" | "C++" => Boolean(item))
+  return Array.from(new Set(parts))
+}
+
+const toUtcDayNumber = (value: Date | string) => {
+  const date = new Date(value)
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+}
+
+export async function updateLoginStreak(userId: string) {
+  try {
+    const now = new Date()
+    const today = toUtcDayNumber(now)
+
+    const { data: existing, error: readError } = await supabase
+      .from("user_stats")
+      .select("current_streak,updated_at")
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (readError) {
+      console.warn("Failed to read current streak", readError)
+      return
+    }
+
+    if (!existing) {
+      await supabase.from("user_stats").upsert(
+        {
+          user_id: userId,
+          current_streak: 1,
+          updated_at: now.toISOString(),
+        },
+        {
+          onConflict: "user_id",
+        }
+      )
+      return
+    }
+
+    const previousStreak = Math.max(1, Number(existing.current_streak ?? 1))
+    const lastLoginDay = existing.updated_at ? toUtcDayNumber(existing.updated_at) : null
+
+    // Same day login: keep streak unchanged
+    if (lastLoginDay === today) {
+      return
+    }
+
+    const dayGap = lastLoginDay === null ? Number.POSITIVE_INFINITY : Math.floor((today - lastLoginDay) / DAY_IN_MS)
+    const nextStreak = dayGap === 1 ? previousStreak + 1 : 1
+
+    await supabase
+      .from("user_stats")
+      .update({
+        current_streak: nextStreak,
+        updated_at: now.toISOString(),
+      })
+      .eq("user_id", userId)
+  } catch (error) {
+    console.warn("Failed to update login streak", error)
+  }
+}
+
 const defaultSnapshot: ProfileProgressSnapshot = {
   python: {
     completed: 0,
@@ -91,7 +168,7 @@ const defaultSnapshot: ProfileProgressSnapshot = {
     xp: 0,
   },
   totalXP: 0,
-  currentStreak: 0,
+  currentStreak: 1,
   achievements: [],
 }
 
@@ -139,32 +216,118 @@ export async function getCompletedChaptersForCourse(userId: string, languageId: 
 
 export async function markChallengeLevelComplete({ userId, levelId, language }: ChallengeLevelProgressInput) {
   try {
-    await supabase.from("challenge_level_progress").upsert(
-      {
-        user_id: userId,
-        level_id: levelId,
-        language,
-        completed: true,
-        completed_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "user_id,level_id",
-      }
-    )
-
-    const { count } = await supabase
+    // Check existing row for this challenge level
+    const { data: existing, error: checkError } = await supabase
       .from("challenge_level_progress")
-      .select("*", { count: "exact", head: true })
+      .select("level_id,language")
+      .eq("user_id", userId)
+      .eq("level_id", levelId)
+      .maybeSingle()
+
+    if (checkError) {
+      console.warn("Failed to check challenge progress", checkError)
+      return
+    }
+
+    const existingLanguages = existing ? parseStoredLanguages(existing.language) : []
+
+    // If already completed with this language, don't re-award XP
+    if (existingLanguages.includes(language)) {
+      return
+    }
+
+    if (existing) {
+      // Legacy schema: single row per level. Keep all solved languages in comma-separated language field.
+      const nextLanguages = Array.from(new Set([...existingLanguages, language]))
+      const { error: updateError } = await supabase
+        .from("challenge_level_progress")
+        .update({
+          language: nextLanguages.join(","),
+          completed: true,
+          completed_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("level_id", levelId)
+
+      if (updateError) {
+        console.warn("Failed to store challenge level progress", updateError)
+        return
+      }
+    } else {
+      // Preferred schema: one row per level+language
+      const primaryUpsert = await supabase.from("challenge_level_progress").upsert(
+        {
+          user_id: userId,
+          level_id: levelId,
+          language,
+          completed: true,
+          completed_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id,level_id,language",
+        }
+      )
+
+      // Fallback for legacy schemas that only have user_id,level_id unique constraint
+      if (primaryUpsert.error) {
+        const fallbackUpsert = await supabase.from("challenge_level_progress").upsert(
+          {
+            user_id: userId,
+            level_id: levelId,
+            language,
+            completed: true,
+            completed_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id,level_id",
+          }
+        )
+
+        if (fallbackUpsert.error) {
+          console.warn("Failed to store challenge level progress", fallbackUpsert.error)
+          return
+        }
+      }
+    }
+
+    // Get all completions
+    let { data: allCompletions, error: readCompletionsError } = await supabase
+      .from("challenge_level_progress")
+      .select("level_id,language")
       .eq("user_id", userId)
       .eq("completed", true)
 
-    const completedLevels = count ?? 0
+    // Fallback for schemas without `completed` column
+    if (readCompletionsError) {
+      const fallbackRead = await supabase
+        .from("challenge_level_progress")
+        .select("level_id,language")
+        .eq("user_id", userId)
+
+      allCompletions = fallbackRead.data
+      readCompletionsError = fallbackRead.error
+    }
+
+    if (readCompletionsError) {
+      console.warn("Failed to read challenge level progress", readCompletionsError)
+      return
+    }
+
+    // Count unique levels and calculate total XP
+    let totalXP = 0
+    const uniqueLevels = new Set<string>()
+    for (const completion of allCompletions ?? []) {
+      uniqueLevels.add(completion.level_id)
+      totalXP += parseStoredLanguages(completion.language).length * 50 // 50 XP per language per level
+    }
+
+    const uniqueLevelsCompleted = uniqueLevels.size
 
     await supabase
       .from("leaderboard_stats")
       .update({
-        challenges_completed: completedLevels,
-        total_points: completedLevels * 100,
+        challenges_completed: uniqueLevelsCompleted,
+        total_points: totalXP,
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", userId)
@@ -175,18 +338,37 @@ export async function markChallengeLevelComplete({ userId, levelId, language }: 
 
 export async function getCompletedChallengeLevels(userId: string): Promise<Set<string>> {
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("challenge_level_progress")
-      .select("level_id")
+      .select("level_id,language")
       .eq("user_id", userId)
       .eq("completed", true)
+
+    // Fallback for schemas without `completed` column
+    if (error) {
+      const fallbackRead = await supabase
+        .from("challenge_level_progress")
+        .select("level_id,language")
+        .eq("user_id", userId)
+
+      data = fallbackRead.data
+      error = fallbackRead.error
+    }
 
     if (error) {
       console.warn("Failed to read challenge progress", error)
       return new Set()
     }
 
-    return new Set((data ?? []).map((row) => row.level_id as string))
+    // Return format: "level_1_Python", "level_1_Java", etc.
+    const completed = new Set<string>()
+    for (const row of data ?? []) {
+      const languages = parseStoredLanguages(row.language)
+      for (const lang of languages) {
+        completed.add(`${row.level_id}_${lang}`)
+      }
+    }
+    return completed
   } catch (error) {
     console.warn("Failed to read challenge progress", error)
     return new Set()
@@ -211,7 +393,7 @@ export async function getProfileProgressSnapshot(userId: string): Promise<Profil
         .eq("completed", true),
       supabase
         .from("challenge_level_progress")
-        .select("language")
+        .select("language,level_id")
         .eq("user_id", userId)
         .eq("completed", true),
       supabase
@@ -232,22 +414,58 @@ export async function getProfileProgressSnapshot(userId: string): Promise<Profil
     }
 
     if (!challengeResult.error) {
+      // Count unique levels and total language-level combinations
+      const levelLanguageMap = new Map<string, Set<string>>()
       for (const row of challengeResult.data ?? []) {
-        const key = LANGUAGE_NAME_TO_KEY[String(row.language).toLowerCase()]
-        if (!key) continue
-        snapshot[key].completed += 1
-        snapshot[key].challengeCompleted += 1
-        snapshot[key].xp += 100
+        const rowLanguages = parseStoredLanguages(row.language)
+        if (!levelLanguageMap.has(row.level_id)) {
+          levelLanguageMap.set(row.level_id, new Set())
+        }
+        for (const lang of rowLanguages) {
+          levelLanguageMap.get(row.level_id)?.add(lang)
+        }
+      }
+
+      // Count unique levels (for display)
+      const uniqueLevels = levelLanguageMap.size
+
+      // Calculate XP: 50 per language per level
+      let totalChallengeXP = 0
+      for (const [levelId, languages] of levelLanguageMap.entries()) {
+        totalChallengeXP += languages.size * 50
+      }
+
+      // Add language-specific progress
+      for (const row of challengeResult.data ?? []) {
+        const rowLanguages = parseStoredLanguages(row.language)
+        for (const lang of rowLanguages) {
+          const key = LANGUAGE_NAME_TO_KEY[String(lang).toLowerCase()]
+          if (!key) continue
+          snapshot[key].completed += 1
+          snapshot[key].challengeCompleted += 1
+          snapshot[key].xp += 50
+        }
       }
     }
 
     if (!statsResult.error && statsResult.data) {
-      snapshot.currentStreak = Number(statsResult.data.current_streak ?? 0)
+      snapshot.currentStreak = Math.max(1, Number(statsResult.data.current_streak ?? 1))
     }
 
     snapshot.totalXP = snapshot.python.xp + snapshot.java.xp + snapshot.cpp.xp
 
-    const totalChallengeCompleted = (challengeResult.data ?? []).length
+    // Calculate total unique challenges for achievements
+    const levelLanguageMap = new Map<string, Set<string>>()
+    for (const row of challengeResult.data ?? []) {
+      const rowLanguages = parseStoredLanguages(row.language)
+      if (!levelLanguageMap.has(row.level_id)) {
+        levelLanguageMap.set(row.level_id, new Set())
+      }
+      for (const lang of rowLanguages) {
+        levelLanguageMap.get(row.level_id)?.add(lang)
+      }
+    }
+    const totalChallengeCompleted = levelLanguageMap.size
 
     snapshot.achievements = [
       {

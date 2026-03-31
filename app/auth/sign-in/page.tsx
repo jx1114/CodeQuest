@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { signIn } from "@/lib/auth"
+import { updateLoginStreak } from "@/lib/progress"
 
 export default function SignInPage() {
   const router = useRouter()
@@ -34,6 +35,10 @@ export default function SignInPage() {
         setError(result.error || "Invalid credentials")
         setIsLoading(false)
         return
+      }
+
+      if (result.user?.id) {
+        await updateLoginStreak(result.user.id)
       }
 
       // Store user info in sessionStorage

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import NavigationBar from "@/components/NavigationBar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, Lock, CheckCircle, X, ChevronLeft } from "lucide-react"
+import { Trophy, CheckCircle, X, ChevronLeft } from "lucide-react"
 import { getCompletedChallengeLevels, markChallengeLevelComplete } from "@/lib/progress"
 
 interface ChallengeLevel {
@@ -13,7 +13,6 @@ interface ChallengeLevel {
   level_number: number
   title: string
   difficulty: "easy" | "medium" | "hard"
-  language: "Python" | "Java" | "C++"
 }
 
 interface Challenge {
@@ -22,9 +21,24 @@ interface Challenge {
   title: string
   scenario: string
   requirements: string[]
-  starter_code: string
+  starter_code_python: string
+  starter_code_java: string
+  starter_code_cpp: string
   expected_output: string
   chapter_hint: string
+}
+
+interface ChallengeTestCase {
+  id: string
+  variables: Record<string, string | number>
+  expectedOutput: string
+}
+
+interface ChallengeTestCaseResult {
+  id: string
+  expectedOutput: string
+  userOutput: string
+  passed: boolean
 }
 
 interface Language {
@@ -34,20 +48,24 @@ interface Language {
   icon: string
 }
 
+type DifficultyFilter = "all" | "easy" | "medium" | "hard"
+
 export default function ChallengesPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [levels, setLevels] = useState<ChallengeLevel[]>([])
-  const [selectedLanguage, setSelectedLanguage] = useState<Language | null>(null)
   const [selectedLevel, setSelectedLevel] = useState<ChallengeLevel | null>(null)
+  const [selectedLanguage, setSelectedLanguage] = useState<"Python" | "Java" | "C++" | null>(null)
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [currentChallengeIndex, setCurrentChallengeIndex] = useState(0)
   const [userAnswer, setUserAnswer] = useState("")
   const [feedback, setFeedback] = useState<{ correct: boolean; message: string } | null>(null)
   const [executionOutput, setExecutionOutput] = useState("")
   const [executionError, setExecutionError] = useState("")
+  const [testCaseResults, setTestCaseResults] = useState<ChallengeTestCaseResult[]>([])
   const [isRunning, setIsRunning] = useState(false)
-  const [completedLevels, setCompletedLevels] = useState<Set<string>>(new Set())
+  const [completedLevels, setCompletedLevels] = useState<Map<string, Set<string>>>(new Map()) // level_id -> Set<languages>
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
 
   useEffect(() => {
     const userData = sessionStorage.getItem("user")
@@ -65,43 +83,44 @@ export default function ChallengesPage() {
 
   const loadCompletedLevels = async (userId: string) => {
     const completed = await getCompletedChallengeLevels(userId)
-    setCompletedLevels(completed)
-  }
-
-  const loadLanguages = () => {
-    // This is called implicitly; languages are shown on first view
+    // Build a map of level_id -> Set<languages>
+    const levelLanguageMap = new Map<string, Set<string>>()
+    for (const item of completed) {
+      // Parse: "level_1_Python" -> ["level_1", "Python"]
+      const parts = item.split("_")
+      if (parts.length >= 2) {
+        const levelId = parts.slice(0, -1).join("_")
+        const language = parts[parts.length - 1]
+        if (!levelLanguageMap.has(levelId)) {
+          levelLanguageMap.set(levelId, new Set())
+        }
+        levelLanguageMap.get(levelId)?.add(language)
+      }
+    }
+    setCompletedLevels(levelLanguageMap)
   }
 
   const loadLevels = () => {
     const mockLevels: ChallengeLevel[] = [
-      // Python levels (1-5)
-      { id: "py1", level_number: 1, title: "Intro & Setup", difficulty: "easy", language: "Python" },
-      { id: "py2", level_number: 2, title: "Variables", difficulty: "easy", language: "Python" },
-      { id: "py3", level_number: 3, title: "Control Flow", difficulty: "easy", language: "Python" },
-      { id: "py4", level_number: 4, title: "Functions", difficulty: "medium", language: "Python" },
-      { id: "py5", level_number: 5, title: "Data Structures", difficulty: "medium", language: "Python" },
-      // Java levels (1-5)
-      { id: "java1", level_number: 1, title: "Intro & Setup", difficulty: "easy", language: "Java" },
-      { id: "java2", level_number: 2, title: "Variables", difficulty: "easy", language: "Java" },
-      { id: "java3", level_number: 3, title: "Control Flow", difficulty: "medium", language: "Java" },
-      { id: "java4", level_number: 4, title: "Functions", difficulty: "medium", language: "Java" },
-      { id: "java5", level_number: 5, title: "Data Structures", difficulty: "hard", language: "Java" },
-      // C++ levels (1-5)
-      { id: "cpp1", level_number: 1, title: "Intro & Setup", difficulty: "easy", language: "C++" },
-      { id: "cpp2", level_number: 2, title: "Variables", difficulty: "easy", language: "C++" },
-      { id: "cpp3", level_number: 3, title: "Control Flow", difficulty: "medium", language: "C++" },
-      { id: "cpp4", level_number: 4, title: "Functions", difficulty: "medium", language: "C++" },
-      { id: "cpp5", level_number: 5, title: "Data Structures", difficulty: "hard", language: "C++" },
+      { id: "level_1", level_number: 1, title: "Warehouse Receipt Generator", difficulty: "easy" },
+      { id: "level_2", level_number: 2, title: "Daily Sales Summary", difficulty: "easy" },
+      { id: "level_3", level_number: 3, title: "Shipping Priority Decision", difficulty: "easy" },
+      { id: "level_4", level_number: 4, title: "Invoice Discount Function", difficulty: "medium" },
+      { id: "level_5", level_number: 5, title: "Inventory Lookup Report", difficulty: "medium" },
+      { id: "level_6", level_number: 6, title: "Ticket Confirmation", difficulty: "medium" },
+      { id: "level_7", level_number: 7, title: "Water Bill Calculator", difficulty: "hard" },
+      { id: "level_8", level_number: 8, title: "Loan Risk Flag", difficulty: "hard" },
+      { id: "level_9", level_number: 9, title: "Delivery ETA Function", difficulty: "hard" },
+      { id: "level_10", level_number: 10, title: "Store Price Lookup", difficulty: "hard" },
     ]
     setLevels(mockLevels)
   }
 
   const loadChallenges = (levelId: string) => {
     const challengeByLevel: Record<string, Challenge> = {
-      // Python challenges
-      "py1": {
+      "level_1": {
         id: "c1",
-        level_id: "py1",
+        level_id: "level_1",
         title: "Warehouse Receipt Generator",
         scenario:
           "You are building a warehouse tool. Print a receipt for one order with item, quantity, and total units to ship.",
@@ -110,13 +129,15 @@ export default function ChallengesPage() {
           "Print exactly 3 lines in the expected format",
           "Do not print extra text",
         ],
-        starter_code: "item = \"USB Cable\"\nquantity = 4\n# Write code below",
+        starter_code_python: "# Variables 'item' and 'quantity' are provided by the test case\n# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Variables 'item' and 'quantity' are provided by the test case\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n  // Variables 'item' and 'quantity' are provided by the test case\n  // Write code here\n  return 0;\n}",
         expected_output: "Order Item: USB Cable\nQuantity: 4\nUnits to Ship: 4",
         chapter_hint: "Learning > Python > Chapter 1: Introduction & Setup",
       },
-      "py2": {
+      "level_2": {
         id: "c2",
-        level_id: "py2",
+        level_id: "level_2",
         title: "Daily Sales Summary",
         scenario:
           "A cafe wants a quick daily summary. Calculate revenue using fixed values and print rounded to 2 decimals.",
@@ -125,13 +146,15 @@ export default function ChallengesPage() {
           "Compute revenue",
           "Print: Revenue: 94.50",
         ],
-        starter_code: "cups_sold = 27\nprice = 3.5\n# Write code below",
+        starter_code_python: "# Variables 'cups_sold' and 'price' are provided by the test case\n# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Variables 'cups_sold' and 'price' are provided by the test case\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\n#include <iomanip>\nusing namespace std;\n\nint main() {\n  // Variables 'cups_sold' and 'price' are provided by the test case\n  // Write code here\n  return 0;\n}",
         expected_output: "Revenue: 94.50",
         chapter_hint: "Learning > Python > Chapter 2: Variables & Data Types",
       },
-      "py3": {
+      "level_3": {
         id: "c3",
-        level_id: "py3",
+        level_id: "level_3",
         title: "Shipping Priority Decision",
         scenario:
           "An e-commerce system chooses shipping mode by package weight.",
@@ -140,13 +163,15 @@ export default function ChallengesPage() {
           "If weight > 5 print Express, else Standard",
           "Output must be exactly one line",
         ],
-        starter_code: "weight = 7\n# Write code below",
+        starter_code_python: "# Variable 'weight' is provided by the test case\n# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Variable 'weight' is provided by the test case\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n  // Variable 'weight' is provided by the test case\n  // Write code here\n  return 0;\n}",
         expected_output: "Shipping Mode: Express",
         chapter_hint: "Learning > Python > Chapter 3: Control Flow",
       },
-      "py4": {
+      "level_4": {
         id: "c4",
-        level_id: "py4",
+        level_id: "level_4",
         title: "Invoice Discount Function",
         scenario:
           "Create a function to apply a fixed discount and print the final invoice total.",
@@ -155,13 +180,15 @@ export default function ChallengesPage() {
           "Call with 250 and 30",
           "Print exactly: Final Total: 220",
         ],
-        starter_code: "# Write code below",
+        starter_code_python: "# Write code below",
+        starter_code_java: "public class Main {\n  // Write function here\n  public static void main(String[] args) {\n    // Call function and print\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\n// Write function here\n\nint main() {\n  // Call function and print\n  return 0;\n}",
         expected_output: "Final Total: 220",
         chapter_hint: "Learning > Python > Chapter 4: Functions",
       },
-      "py5": {
+      "level_5": {
         id: "c5",
-        level_id: "py5",
+        level_id: "level_5",
         title: "Inventory Lookup Report",
         scenario:
           "Use a dictionary to store stock and print stock for pen and notebook.",
@@ -170,152 +197,92 @@ export default function ChallengesPage() {
           "Print two lines in expected order",
           "Match spacing and casing exactly",
         ],
-        starter_code: "# Write code below",
+        starter_code_python: "# Write code below",
+        starter_code_java: "import java.util.*;\n\npublic class Main {\n  public static void main(String[] args) {\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\n#include <map>\nusing namespace std;\n\nint main() {\n  // Write code here\n  return 0;\n}",
         expected_output: "pen: 12\nnotebook: 5",
         chapter_hint: "Learning > Python > Chapter 5: Data Structures",
       },
-      // Java challenges
-      "java1": {
+      "level_6": {
         id: "c6",
-        level_id: "java1",
-        title: "Ticket Confirmation (Java)",
+        level_id: "level_6",
+        title: "Ticket Confirmation",
         scenario:
-          "Create a Java program that prints a confirmation message for a booked ticket.",
+          "Create a program that prints a confirmation message for a booked ticket.",
         requirements: [
           "Program must compile and run",
           "Print two lines exactly",
-          "Use class Main",
+          "Use standard output",
         ],
-        starter_code: "public class Main {\n  public static void main(String[] args) {\n    // Write code here\n  }\n}",
+        starter_code_python: "# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n  // Write code here\n  return 0;\n}",
         expected_output: "Booking Confirmed\nSeat: A12",
         chapter_hint: "Learning > Java > Chapter 1: Introduction & Setup",
       },
-      "java2": {
+      "level_7": {
         id: "c7",
-        level_id: "java2",
-        title: "Water Bill (Java)",
+        level_id: "level_7",
+        title: "Water Bill Calculator",
         scenario: "Calculate total bill using usage and per-unit price.",
         requirements: [
           "usage = 18, unitPrice = 1.75",
           "Print one line: Bill: 31.50",
           "Use formatted output",
         ],
-        starter_code: "public class Main {\n  public static void main(String[] args) {\n    int usage = 18;\n    double unitPrice = 1.75;\n    // Write code here\n  }\n}",
+        starter_code_python: "# Variables 'usage' and 'unitPrice' are provided by the test case\n# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Variables 'usage' and 'unitPrice' are provided by the test case\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\n#include <iomanip>\nusing namespace std;\n\nint main() {\n  // Variables 'usage' and 'unitPrice' are provided by the test case\n  // Write code here\n  return 0;\n}",
         expected_output: "Bill: 31.50",
         chapter_hint: "Learning > Java > Chapter 2: Variables & Data Types",
       },
-      "java3": {
+      "level_8": {
         id: "c8",
-        level_id: "java3",
-        title: "Loan Risk Flag (Java)",
+        level_id: "level_8",
+        title: "Loan Risk Flag",
         scenario: "Flag high risk when credit score is below threshold.",
         requirements: [
           "score = 580",
           "If score < 600 print Risk: High else Risk: Low",
           "Single-line output only",
         ],
-        starter_code: "public class Main {\n  public static void main(String[] args) {\n    int score = 580;\n    // Write code here\n  }\n}",
+        starter_code_python: "# Variable 'score' is provided by the test case\n# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Variable 'score' is provided by the test case\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n  // Variable 'score' is provided by the test case\n  // Write code here\n  return 0;\n}",
         expected_output: "Risk: High",
         chapter_hint: "Learning > Java > Chapter 3: Control Flow",
       },
-      "java4": {
+      "level_9": {
         id: "c9",
-        level_id: "java4",
-        title: "Delivery ETA Function (Java)",
+        level_id: "level_9",
+        title: "Delivery ETA Function",
         scenario: "Write a function that adds preparation and travel minutes.",
         requirements: [
-          "Function: eta(int prep, int travel)",
+          "Create function eta(int prep, int travel)",
           "Call eta(12, 18)",
           "Print: ETA Minutes: 30",
         ],
-        starter_code: "public class Main {\n  // Write function here\n  public static void main(String[] args) {\n    // Call function and print\n  }\n}",
+        starter_code_python: "# Write code below",
+        starter_code_java: "public class Main {\n  // Write function here\n  public static void main(String[] args) {\n    // Call function and print\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\n// Write function here\n\nint main() {\n  // Call function and print\n  return 0;\n}",
         expected_output: "ETA Minutes: 30",
         chapter_hint: "Learning > Java > Chapter 4: Functions",
       },
-      "java5": {
+      "level_10": {
         id: "c10",
-        level_id: "java5",
-        title: "Store Price Lookup (Java)",
-        scenario: "Use HashMap to print prices for rice and milk.",
+        level_id: "level_10",
+        title: "Store Price Lookup",
+        scenario: "Use a map to store and print prices for rice and milk.",
         requirements: [
-          "Use HashMap<String, Integer>",
+          "Use appropriate data structure",
           "Set rice=12, milk=8",
           "Print two lines in order",
         ],
-        starter_code: "import java.util.*;\n\npublic class Main {\n  public static void main(String[] args) {\n    // Write code here\n  }\n}",
+        starter_code_python: "# Write code below",
+        starter_code_java: "import java.util.*;\n\npublic class Main {\n  public static void main(String[] args) {\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\n#include <map>\nusing namespace std;\n\nint main() {\n  // Write code here\n  return 0;\n}",
         expected_output: "rice: 12\nmilk: 8",
         chapter_hint: "Learning > Java > Chapter 5: Data Structures",
-      },
-      // C++ challenges
-      "cpp1": {
-        id: "c11",
-        level_id: "cpp1",
-        title: "Route Planner Start (C++)",
-        scenario: "Print a route planning start message for a logistics app.",
-        requirements: [
-          "Use iostream",
-          "Print two lines exactly",
-          "Program must include main",
-        ],
-        starter_code: "#include <iostream>\nusing namespace std;\n\nint main() {\n  // Write code here\n  return 0;\n}",
-        expected_output: "Route Ready\nTruck: T-17",
-        chapter_hint: "Learning > C++ > Chapter 1: Introduction & Setup",
-      },
-      "cpp2": {
-        id: "c12",
-        level_id: "cpp2",
-        title: "Fuel Cost (C++)",
-        scenario: "Calculate simple fuel cost and print with 2 decimals.",
-        requirements: [
-          "liters = 14, pricePerLiter = 2.4",
-          "Print exactly: Fuel Cost: 33.60",
-          "Use fixed precision formatting",
-        ],
-        starter_code: "#include <iostream>\n#include <iomanip>\nusing namespace std;\n\nint main() {\n  int liters = 14;\n  double pricePerLiter = 2.4;\n  // Write code here\n  return 0;\n}",
-        expected_output: "Fuel Cost: 33.60",
-        chapter_hint: "Learning > C++ > Chapter 2: Variables & Data Types",
-      },
-      "cpp3": {
-        id: "c13",
-        level_id: "cpp3",
-        title: "Temperature Alert (C++)",
-        scenario: "Classify temperature as Hot or Normal.",
-        requirements: [
-          "temp = 33",
-          "If temp >= 30 print Alert: Hot else Alert: Normal",
-          "One output line",
-        ],
-        starter_code: "#include <iostream>\nusing namespace std;\n\nint main() {\n  int temp = 33;\n  // Write code here\n  return 0;\n}",
-        expected_output: "Alert: Hot",
-        chapter_hint: "Learning > C++ > Chapter 3: Control Flow",
-      },
-      "cpp4": {
-        id: "c14",
-        level_id: "cpp4",
-        title: "Packing Time Function (C++)",
-        scenario: "Create function to compute packing time for boxes.",
-        requirements: [
-          "Function: packingTime(int boxes)",
-          "Each box takes 3 minutes",
-          "For boxes=6 print: Packing Minutes: 18",
-        ],
-        starter_code: "#include <iostream>\nusing namespace std;\n\n// Write function here\n\nint main() {\n  // Call function and print\n  return 0;\n}",
-        expected_output: "Packing Minutes: 18",
-        chapter_hint: "Learning > C++ > Chapter 4: Functions",
-      },
-      "cpp5": {
-        id: "c15",
-        level_id: "cpp5",
-        title: "Exam Score Lookup (C++)",
-        scenario: "Use map to store and print score for Bob.",
-        requirements: [
-          "Create map<string, int> scores",
-          "Insert Bob=88",
-          "Print exactly: Bob: 88",
-        ],
-        starter_code: "#include <iostream>\n#include <map>\nusing namespace std;\n\nint main() {\n  // Write code here\n  return 0;\n}",
-        expected_output: "Bob: 88",
-        chapter_hint: "Learning > C++ > Chapter 5: Data Structures",
       },
     }
 
@@ -325,7 +292,14 @@ export default function ChallengesPage() {
     setFeedback(null)
     setExecutionOutput("")
     setExecutionError("")
-    setUserAnswer(selectedChallenge?.starter_code ?? "")
+    setTestCaseResults([])
+    
+    // Set starter code based on selected language
+    if (selectedChallenge && selectedLanguage) {
+      const starterCodeKey = `starter_code_${selectedLanguage.toLowerCase()}`
+      const starterCode = selectedChallenge[starterCodeKey as keyof Challenge] as string || ""
+      setUserAnswer(starterCode)
+    }
   }
 
   const normalizeOutput = (value: string) =>
@@ -336,45 +310,235 @@ export default function ChallengesPage() {
       .join("\n")
       .trim()
 
+  const formatVariables = (variables: Record<string, string | number>) =>
+    Object.entries(variables)
+      .map(([key, value]) => `${key}=${typeof value === "string" ? `"${value}"` : value}`)
+      .join(", ")
+
+  const getLevelTestCases = (levelId: string): ChallengeTestCase[] => {
+    switch (levelId) {
+      case "level_1":
+        return [
+          { id: "tc-1", variables: { item: "USB Cable", quantity: 4 }, expectedOutput: "Order Item: USB Cable\nQuantity: 4\nUnits to Ship: 4" },
+          { id: "tc-2", variables: { item: "Mouse", quantity: 2 }, expectedOutput: "Order Item: Mouse\nQuantity: 2\nUnits to Ship: 2" },
+          { id: "tc-3", variables: { item: "Keyboard", quantity: 7 }, expectedOutput: "Order Item: Keyboard\nQuantity: 7\nUnits to Ship: 7" },
+          { id: "tc-4", variables: { item: "Webcam", quantity: 1 }, expectedOutput: "Order Item: Webcam\nQuantity: 1\nUnits to Ship: 1" },
+        ]
+      case "level_2":
+        return [
+          { id: "tc-1", variables: { cups_sold: 27, price: 3.5 }, expectedOutput: "Revenue: 94.50" },
+          { id: "tc-2", variables: { cups_sold: 10, price: 2.25 }, expectedOutput: "Revenue: 22.50" },
+          { id: "tc-3", variables: { cups_sold: 8, price: 4.75 }, expectedOutput: "Revenue: 38.00" },
+          { id: "tc-4", variables: { cups_sold: 15, price: 1.2 }, expectedOutput: "Revenue: 18.00" },
+        ]
+      case "level_3":
+        return [
+          { id: "tc-1", variables: { weight: 7 }, expectedOutput: "Shipping Mode: Express" },
+          { id: "tc-2", variables: { weight: 2 }, expectedOutput: "Shipping Mode: Standard" },
+          { id: "tc-3", variables: { weight: 5 }, expectedOutput: "Shipping Mode: Standard" },
+          { id: "tc-4", variables: { weight: 12 }, expectedOutput: "Shipping Mode: Express" },
+        ]
+      case "level_4":
+        return [
+          { id: "tc-1", variables: { amount: 250, discount: 30 }, expectedOutput: "Final Total: 220" },
+          { id: "tc-2", variables: { amount: 100, discount: 15 }, expectedOutput: "Final Total: 85" },
+          { id: "tc-3", variables: { amount: 500, discount: 125 }, expectedOutput: "Final Total: 375" },
+          { id: "tc-4", variables: { amount: 80, discount: 10 }, expectedOutput: "Final Total: 70" },
+        ]
+      case "level_5":
+        return [
+          { id: "tc-1", variables: { pen: 12, notebook: 5 }, expectedOutput: "pen: 12\nnotebook: 5" },
+          { id: "tc-2", variables: { pen: 3, notebook: 9 }, expectedOutput: "pen: 3\nnotebook: 9" },
+          { id: "tc-3", variables: { pen: 0, notebook: 2 }, expectedOutput: "pen: 0\nnotebook: 2" },
+          { id: "tc-4", variables: { pen: 25, notebook: 11 }, expectedOutput: "pen: 25\nnotebook: 11" },
+        ]
+      case "level_6":
+        return [
+          { id: "tc-1", variables: { seat: "A12" }, expectedOutput: "Booking Confirmed\nSeat: A12" },
+          { id: "tc-2", variables: { seat: "B03" }, expectedOutput: "Booking Confirmed\nSeat: B03" },
+          { id: "tc-3", variables: { seat: "C09" }, expectedOutput: "Booking Confirmed\nSeat: C09" },
+          { id: "tc-4", variables: { seat: "D21" }, expectedOutput: "Booking Confirmed\nSeat: D21" },
+        ]
+      case "level_7":
+        return [
+          { id: "tc-1", variables: { usage: 18, unitPrice: 1.75 }, expectedOutput: "Bill: 31.50" },
+          { id: "tc-2", variables: { usage: 4, unitPrice: 2.5 }, expectedOutput: "Bill: 10.00" },
+          { id: "tc-3", variables: { usage: 9, unitPrice: 3 }, expectedOutput: "Bill: 27.00" },
+          { id: "tc-4", variables: { usage: 12, unitPrice: 1.2 }, expectedOutput: "Bill: 14.40" },
+        ]
+      case "level_8":
+        return [
+          { id: "tc-1", variables: { score: 580 }, expectedOutput: "Risk: High" },
+          { id: "tc-2", variables: { score: 700 }, expectedOutput: "Risk: Low" },
+          { id: "tc-3", variables: { score: 600 }, expectedOutput: "Risk: Low" },
+          { id: "tc-4", variables: { score: 410 }, expectedOutput: "Risk: High" },
+        ]
+      case "level_9":
+        return [
+          { id: "tc-1", variables: { prep: 12, travel: 18 }, expectedOutput: "ETA Minutes: 30" },
+          { id: "tc-2", variables: { prep: 5, travel: 8 }, expectedOutput: "ETA Minutes: 13" },
+          { id: "tc-3", variables: { prep: 20, travel: 35 }, expectedOutput: "ETA Minutes: 55" },
+          { id: "tc-4", variables: { prep: 0, travel: 9 }, expectedOutput: "ETA Minutes: 9" },
+        ]
+      case "level_10":
+        return [
+          { id: "tc-1", variables: { rice: 12, milk: 8 }, expectedOutput: "rice: 12\nmilk: 8" },
+          { id: "tc-2", variables: { rice: 20, milk: 15 }, expectedOutput: "rice: 20\nmilk: 15" },
+          { id: "tc-3", variables: { rice: 1, milk: 3 }, expectedOutput: "rice: 1\nmilk: 3" },
+          { id: "tc-4", variables: { rice: 30, milk: 25 }, expectedOutput: "rice: 30\nmilk: 25" },
+        ]
+      default:
+        return [
+          { id: "tc-1", variables: {}, expectedOutput: "" },
+          { id: "tc-2", variables: {}, expectedOutput: "" },
+          { id: "tc-3", variables: {}, expectedOutput: "" },
+          { id: "tc-4", variables: {}, expectedOutput: "" },
+        ]
+    }
+  }
+
+  const applyVariablesToCode = (
+    code: string,
+    language: "Python" | "Java" | "C++",
+    levelId: string,
+    variables: Record<string, string | number>
+  ) => {
+    const indent = (text: string, spaces: number) =>
+      text
+        .split("\n")
+        .map((line) => `${" ".repeat(spaces)}${line}`)
+        .join("\n")
+
+    if (language === "Python") {
+      const declarations = Object.entries(variables)
+        .map(([name, value]) => `${name} = ${typeof value === "string" ? `"${value}"` : String(value)}`)
+        .join("\n")
+
+      return declarations ? `${declarations}\n${code}` : code
+    }
+
+    if (language === "Java") {
+      const typeFor = (key: string, value: string | number) => {
+        if (typeof value === "string") return "String"
+        if (["price", "unitPrice"].includes(key)) return "double"
+        return "int"
+      }
+
+      const declarationBlock = Object.entries(variables)
+        .map(([name, value]) => `${typeFor(name, value)} ${name} = ${typeof value === "string" ? `"${value}"` : String(value)};`)
+        .map((line) => `    ${line}`)
+        .join("\n")
+
+      const hasJavaMain = /public\s+static\s+void\s+main\s*\(\s*String\[\]\s+args\s*\)/.test(code)
+      let nextCode = code
+
+      if (!hasJavaMain) {
+        const body = code.trim()
+        nextCode = `public class Main {\n  public static void main(String[] args) {\n${declarationBlock}${body ? `\n${indent(body, 4)}` : ""}\n  }\n}`
+      } else if (declarationBlock) {
+        nextCode = nextCode.replace(
+          /public\s+static\s+void\s+main\s*\(\s*String\[\]\s+args\s*\)\s*\{/,
+          (match) => `${match}\n${declarationBlock}`
+        )
+      }
+
+      if (levelId === "level_6") {
+        nextCode = nextCode.replace(/Seat:\s*A12/g, `Seat: ${String(variables.seat ?? "A12")}`)
+      }
+
+      return nextCode
+    }
+
+    const typeForCpp = (key: string, value: string | number) => {
+      if (typeof value === "string") return "string"
+      if (["price", "unitPrice"].includes(key)) return "double"
+      return "int"
+    }
+
+    const declarationBlock = Object.entries(variables)
+      .map(([name, value]) => `${typeForCpp(name, value)} ${name} = ${typeof value === "string" ? `"${value}"` : String(value)};`)
+      .map((line) => `  ${line}`)
+      .join("\n")
+
+    const hasCppMain = /int\s+main\s*\(\s*\)/.test(code)
+    const hasIostream = /#include\s*<iostream>/.test(code)
+    const hasUsingStd = /using\s+namespace\s+std\s*;/.test(code)
+
+    let nextCode = code
+    if (!hasCppMain) {
+      const includes = hasIostream ? "" : "#include <iostream>\n"
+      const usingStd = hasUsingStd ? "" : "using namespace std;\n\n"
+      const body = code.trim()
+      nextCode = `${includes}${usingStd}int main() {\n${declarationBlock}${body ? `\n${indent(body, 2)}` : ""}\n  return 0;\n}`
+    } else if (declarationBlock) {
+      nextCode = nextCode.replace(/int\s+main\s*\(\s*\)\s*\{/, (match) => `${match}\n${declarationBlock}`)
+      if (!hasIostream) {
+        nextCode = `#include <iostream>\n${nextCode}`
+      }
+      if (!hasUsingStd) {
+        nextCode = nextCode.replace(/#include\s*<iostream>\s*/m, (match) => `${match}using namespace std;\n\n`)
+      }
+    }
+
+    if (levelId === "level_6") {
+      nextCode = nextCode.replace(/Seat:\s*A12/g, `Seat: ${String(variables.seat ?? "A12")}`)
+    }
+
+    return nextCode
+  }
+
   const submitAnswer = async () => {
-    if (!currentChallenge || !selectedLevel) return
+    if (!currentChallenge || !selectedLevel || !selectedLanguage) return
 
     setIsRunning(true)
     setExecutionError("")
     setExecutionOutput("")
+    setTestCaseResults([])
 
     let isCorrect = false
+    const testCases = getLevelTestCases(selectedLevel.id)
+    const results: ChallengeTestCaseResult[] = []
 
     try {
-      const response = await fetch("/api/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          language: selectedLevel.language,
-          code: userAnswer,
-        }),
-      })
+      for (const testCase of testCases) {
+        const preparedCode = applyVariablesToCode(
+          userAnswer,
+          selectedLanguage,
+          selectedLevel.id,
+          testCase.variables
+        )
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        setExecutionError(result?.error ?? "Execution failed")
-        setFeedback({
-          correct: false,
-          message: "Execution failed.",
+        const response = await fetch("/api/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            language: selectedLanguage,
+            code: preparedCode,
+          }),
         })
-        return
+
+        const result = await response.json()
+        const output = (result?.output ?? result?.error ?? "").toString()
+        const passed = response.ok && normalizeOutput(output) === normalizeOutput(testCase.expectedOutput)
+
+        results.push({
+          id: testCase.id,
+          expectedOutput: testCase.expectedOutput,
+          userOutput: output || "(no output)",
+          passed,
+        })
       }
 
-      const output = (result?.output ?? "").toString()
-      setExecutionOutput(output || "(no output)")
+      setTestCaseResults(results)
+      setExecutionOutput(results[results.length - 1]?.userOutput ?? "")
+      const passedCount = results.filter((r) => r.passed).length
+      isCorrect = passedCount === testCases.length
 
-      isCorrect = normalizeOutput(output) === normalizeOutput(currentChallenge.expected_output)
       setFeedback({
         correct: isCorrect,
         message: isCorrect
-          ? "Correct output! Great solution."
-          : "Output does not match expected output.",
+          ? "All 4 test cases passed! Great solution."
+          : `${passedCount}/4 test cases passed.`,
       })
     } catch {
       setExecutionError("Execution failed. Please try again.")
@@ -389,28 +553,35 @@ export default function ChallengesPage() {
 
     if (isCorrect && currentChallengeIndex === challenges.length - 1) {
       if (selectedLevel) {
-        setCompletedLevels((prev) => new Set(prev).add(selectedLevel.id))
+        // Update completed levels with this language
+        setCompletedLevels((prev) => {
+          const updated = new Map(prev)
+          if (!updated.has(selectedLevel.id)) {
+            updated.set(selectedLevel.id, new Set())
+          }
+          updated.get(selectedLevel.id)?.add(selectedLanguage)
+          return updated
+        })
+
         if (user?.id) {
           await markChallengeLevelComplete({
             userId: user.id,
             levelId: selectedLevel.id,
-            language: selectedLevel.language,
+            language: selectedLanguage,
           })
         }
       }
     }
   }
 
-  const goToLearningChapter = (chapterHint: string) => {
-    // Parse chapter_hint: "Learning > Python > Chapter 2: Variables & Data Types"
+  const goToLearningChapter = (chapterHint: string, preferredLanguage?: "Python" | "Java" | "C++") => {
     const parts = chapterHint.split(">")
     if (parts.length < 3) return
 
-    const language = parts[1].trim() // e.g., "Python"
-    const chapterText = parts[2].trim() // e.g., "Chapter 2: Variables & Data Types"
+    const language = preferredLanguage ?? parts[1].trim()
+    const chapterText = parts[2].trim()
     const chapterNumber = parseInt(chapterText.split(":")[0].replace("Chapter", "").trim())
 
-    // Store navigation info in sessionStorage
     sessionStorage.setItem(
       "learningNavigation",
       JSON.stringify({
@@ -419,18 +590,14 @@ export default function ChallengesPage() {
       })
     )
 
-    // Navigate to learning page
     router.push("/learning")
   }
 
   const nextChallenge = () => {
     if (!selectedLevel) return
 
-    // Find next level in the same language
     const nextLevel = levels.find(
-      (level) =>
-        level.language === selectedLevel.language &&
-        level.level_number === selectedLevel.level_number + 1
+      (level) => level.level_number === selectedLevel.level_number + 1
     )
 
     if (nextLevel) {
@@ -449,267 +616,501 @@ export default function ChallengesPage() {
   const isLevelUnlocked = (level: ChallengeLevel) => {
     if (level.level_number === 1) return true
     const previousLevel = levels.find(
-      (l) => l.language === level.language && l.level_number === level.level_number - 1
+      (l) => l.level_number === level.level_number - 1
     )
     return previousLevel ? completedLevels.has(previousLevel.id) : false
   }
 
-  const currentChallenge = challenges[currentChallengeIndex]
+  const getCompletedLanguagesForLevel = (levelId: string): string[] => {
+    return Array.from(completedLevels.get(levelId) ?? new Set())
+  }
 
-  // Language selection view
-  if (!selectedLanguage) {
-    const languages: Language[] = [
-      { id: "1", name: "Python", description: "Learn Python from basics to advanced concepts.", icon: "/Python-Logo.png" },
-      { id: "2", name: "Java", description: "Master object-oriented programming with Java.", icon: "/Java-Logo.png" },
-      { id: "3", name: "C++", description: "Dive into systems programming with C++.", icon: "/C++-Logo.png" },
-    ]
+  const currentChallenge = challenges[currentChallengeIndex]
+  const currentTestCases = selectedLevel ? getLevelTestCases(selectedLevel.id) : []
+
+  const handleSelectLanguage = (level: ChallengeLevel, language: "Python" | "Java" | "C++") => {
+    setSelectedLevel(level)
+    setSelectedLanguage(language)
+    // Load challenges will be triggered in the next render when selectedLevel changes
+    // So we need to pass the level directly
+    const challengeByLevel: Record<string, Challenge> = {
+      "level_1": {
+        id: "c1",
+        level_id: "level_1",
+        title: "Warehouse Receipt Generator",
+        scenario:
+          "You are building a warehouse tool. Print a receipt for one order with item, quantity, and total units to ship.",
+        requirements: [
+          "Use variables for item name and quantity",
+          "Print exactly 3 lines in the expected format",
+          "Do not print extra text",
+        ],
+        starter_code_python: "# Variables 'item' and 'quantity' are provided by the test case\n# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Variables 'item' and 'quantity' are provided by the test case\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n  // Variables 'item' and 'quantity' are provided by the test case\n  // Write code here\n  return 0;\n}",
+        expected_output: "Order Item: USB Cable\nQuantity: 4\nUnits to Ship: 4",
+        chapter_hint: "Learning > Python > Chapter 1: Introduction & Setup",
+      },
+      "level_2": {
+        id: "c2",
+        level_id: "level_2",
+        title: "Daily Sales Summary",
+        scenario:
+          "A cafe wants a quick daily summary. Calculate revenue using fixed values and print rounded to 2 decimals.",
+        requirements: [
+          "Set cups_sold = 27 and price = 3.5",
+          "Compute revenue",
+          "Print: Revenue: 94.50",
+        ],
+        starter_code_python: "# Variables 'cups_sold' and 'price' are provided by the test case\n# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Variables 'cups_sold' and 'price' are provided by the test case\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\n#include <iomanip>\nusing namespace std;\n\nint main() {\n  // Variables 'cups_sold' and 'price' are provided by the test case\n  // Write code here\n  return 0;\n}",
+        expected_output: "Revenue: 94.50",
+        chapter_hint: "Learning > Python > Chapter 2: Variables & Data Types",
+      },
+      "level_3": {
+        id: "c3",
+        level_id: "level_3",
+        title: "Shipping Priority Decision",
+        scenario:
+          "An e-commerce system chooses shipping mode by package weight.",
+        requirements: [
+          "Set weight = 7",
+          "If weight > 5 print Express, else Standard",
+          "Output must be exactly one line",
+        ],
+        starter_code_python: "# Variable 'weight' is provided by the test case\n# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Variable 'weight' is provided by the test case\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n  // Variable 'weight' is provided by the test case\n  // Write code here\n  return 0;\n}",
+        expected_output: "Shipping Mode: Express",
+        chapter_hint: "Learning > Python > Chapter 3: Control Flow",
+      },
+      "level_4": {
+        id: "c4",
+        level_id: "level_4",
+        title: "Invoice Discount Function",
+        scenario:
+          "Create a function to apply a fixed discount and print the final invoice total.",
+        requirements: [
+          "Create function apply_discount(amount, discount)",
+          "Call with 250 and 30",
+          "Print exactly: Final Total: 220",
+        ],
+        starter_code_python: "# Write code below",
+        starter_code_java: "public class Main {\n  // Write function here\n  public static void main(String[] args) {\n    // Call function and print\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\n// Write function here\n\nint main() {\n  // Call function and print\n  return 0;\n}",
+        expected_output: "Final Total: 220",
+        chapter_hint: "Learning > Python > Chapter 4: Functions",
+      },
+      "level_5": {
+        id: "c5",
+        level_id: "level_5",
+        title: "Inventory Lookup Report",
+        scenario:
+          "Use a dictionary to store stock and print stock for pen and notebook.",
+        requirements: [
+          "Create dictionary stock with pen=12 and notebook=5",
+          "Print two lines in expected order",
+          "Match spacing and casing exactly",
+        ],
+        starter_code_python: "# Write code below",
+        starter_code_java: "import java.util.*;\n\npublic class Main {\n  public static void main(String[] args) {\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\n#include <map>\nusing namespace std;\n\nint main() {\n  // Write code here\n  return 0;\n}",
+        expected_output: "pen: 12\nnotebook: 5",
+        chapter_hint: "Learning > Python > Chapter 5: Data Structures",
+      },
+      "level_6": {
+        id: "c6",
+        level_id: "level_6",
+        title: "Ticket Confirmation",
+        scenario:
+          "Create a program that prints a confirmation message for a booked ticket.",
+        requirements: [
+          "Program must compile and run",
+          "Print two lines exactly",
+          "Use standard output",
+        ],
+        starter_code_python: "# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n  // Write code here\n  return 0;\n}",
+        expected_output: "Booking Confirmed\nSeat: A12",
+        chapter_hint: "Learning > Java > Chapter 1: Introduction & Setup",
+      },
+      "level_7": {
+        id: "c7",
+        level_id: "level_7",
+        title: "Water Bill Calculator",
+        scenario: "Calculate total bill using usage and per-unit price.",
+        requirements: [
+          "usage = 18, unitPrice = 1.75",
+          "Print one line: Bill: 31.50",
+          "Use formatted output",
+        ],
+        starter_code_python: "# Variables 'usage' and 'unitPrice' are provided by the test case\n# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Variables 'usage' and 'unitPrice' are provided by the test case\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\n#include <iomanip>\nusing namespace std;\n\nint main() {\n  // Variables 'usage' and 'unitPrice' are provided by the test case\n  // Write code here\n  return 0;\n}",
+        expected_output: "Bill: 31.50",
+        chapter_hint: "Learning > Java > Chapter 2: Variables & Data Types",
+      },
+      "level_8": {
+        id: "c8",
+        level_id: "level_8",
+        title: "Loan Risk Flag",
+        scenario: "Flag high risk when credit score is below threshold.",
+        requirements: [
+          "score = 580",
+          "If score < 600 print Risk: High else Risk: Low",
+          "Single-line output only",
+        ],
+        starter_code_python: "# Variable 'score' is provided by the test case\n# Write code below",
+        starter_code_java: "public class Main {\n  public static void main(String[] args) {\n    // Variable 'score' is provided by the test case\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\nint main() {\n  // Variable 'score' is provided by the test case\n  // Write code here\n  return 0;\n}",
+        expected_output: "Risk: High",
+        chapter_hint: "Learning > Java > Chapter 3: Control Flow",
+      },
+      "level_9": {
+        id: "c9",
+        level_id: "level_9",
+        title: "Delivery ETA Function",
+        scenario: "Write a function that adds preparation and travel minutes.",
+        requirements: [
+          "Create function eta(int prep, int travel)",
+          "Call eta(12, 18)",
+          "Print: ETA Minutes: 30",
+        ],
+        starter_code_python: "# Write code below",
+        starter_code_java: "public class Main {\n  // Write function here\n  public static void main(String[] args) {\n    // Call function and print\n  }\n}",
+        starter_code_cpp: "#include <iostream>\nusing namespace std;\n\n// Write function here\n\nint main() {\n  // Call function and print\n  return 0;\n}",
+        expected_output: "ETA Minutes: 30",
+        chapter_hint: "Learning > Java > Chapter 4: Functions",
+      },
+      "level_10": {
+        id: "c10",
+        level_id: "level_10",
+        title: "Store Price Lookup",
+        scenario: "Use a map to store and print prices for rice and milk.",
+        requirements: [
+          "Use appropriate data structure",
+          "Set rice=12, milk=8",
+          "Print two lines in order",
+        ],
+        starter_code_python: "# Write code below",
+        starter_code_java: "import java.util.*;\n\npublic class Main {\n  public static void main(String[] args) {\n    // Write code here\n  }\n}",
+        starter_code_cpp: "#include <iostream>\n#include <map>\nusing namespace std;\n\nint main() {\n  // Write code here\n  return 0;\n}",
+        expected_output: "rice: 12\nmilk: 8",
+        chapter_hint: "Learning > Java > Chapter 5: Data Structures",
+      },
+    }
+
+    const selectedChallenge = challengeByLevel[level.id]
+    setChallenges(selectedChallenge ? [selectedChallenge] : [])
+    setCurrentChallengeIndex(0)
+    setFeedback(null)
+    setExecutionOutput("")
+    setExecutionError("")
+    
+    // Set starter code based on selected language
+    if (selectedChallenge && language) {
+      const starterCodeKey = `starter_code_${language.toLowerCase()}`
+      const starterCode = selectedChallenge[starterCodeKey as keyof Challenge] as string || ""
+      setUserAnswer(starterCode)
+    }
+  }
+
+  // Challenge solving view
+  if (selectedLevel && selectedLanguage) {
+    if (!currentChallenge) {
+      return (
+        <div className="min-h-screen bg-slate-100 p-4 md:p-8">
+          <div className="max-w-3xl mx-auto">
+            <Card className="bg-white shadow-sm border-0">
+              <CardContent className="p-8 text-center">
+                <Trophy className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">No Challenges Available</h3>
+                <Button onClick={() => { setSelectedLevel(null); setSelectedLanguage(null) }} className="mt-4 bg-blue-600 hover:bg-blue-700">
+                  Back to Challenges
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )
+    }
 
     return (
       <>
         <NavigationBar />
         <div className="min-h-screen bg-slate-100 p-4 md:p-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold text-slate-900 mb-2">Choose Language</h2>
-              <p className="text-slate-600">Select a programming language to begin your challenges</p>
-            </div>
+          <div className="max-w-3xl mx-auto">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedLevel(null)
+                setSelectedLanguage(null)
+                setChallenges([])
+              }}
+              className="mb-6 bg-white shadow-sm border-0 hover:shadow-md"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Back to Challenges
+            </Button>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {languages.map((lang) => (
-                <Card
-                  key={lang.id}
-                  className="cursor-pointer hover:shadow-md transition-all overflow-hidden bg-white shadow-sm border-0"
-                  onClick={() => setSelectedLanguage(lang)}
-                >
-                  <CardContent className="p-6">
-                    <div className="mb-4 flex items-center justify-center">
-                      <img src={lang.icon} alt={lang.name} className="w-32 h-32 object-contain" />
+            <Card className="bg-white shadow-sm border-0">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl text-slate-900">
+                      Level {selectedLevel.level_number}: {selectedLevel.title}
+                    </CardTitle>
+                    <p className="text-sm text-slate-500 mt-1">Solving in {selectedLanguage}</p>
+                  </div>
+                  <span className="text-sm text-slate-600">
+                    {currentChallengeIndex + 1} / {challenges.length}
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <h4 className="text-lg font-semibold text-slate-900 mb-2">{currentChallenge.title}</h4>
+                  <p className="text-slate-700">{currentChallenge.scenario}</p>
+                  <ul className="mt-3 space-y-1 list-disc list-inside text-sm text-slate-600">
+                    {currentChallenge.requirements.map((item, idx) => (
+                      <li key={idx}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 mb-3">Test Cases (4)</p>
+                  <div className="space-y-3">
+                    {currentTestCases.map((testCase, index) => (
+                      <div key={testCase.id} className="rounded-md border border-blue-100 bg-white p-3">
+                        <p className="text-xs font-semibold text-slate-700 mb-1">Test Case {index + 1}</p>
+                        <p className="text-xs text-slate-500 mb-1">Variables</p>
+                        <pre className="rounded bg-slate-900 p-2 text-xs text-blue-200 overflow-x-auto whitespace-pre-wrap">
+                          <code>{formatVariables(testCase.variables)}</code>
+                        </pre>
+                        <p className="text-xs text-slate-500 mt-2 mb-1">Expected Output</p>
+                        <pre className="rounded bg-slate-900 p-2 text-xs text-green-300 overflow-x-auto whitespace-pre-wrap">
+                          <code>{testCase.expectedOutput}</code>
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm font-semibold text-slate-700 mb-2">Write your code ({selectedLanguage})</p>
+                  <textarea
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                    placeholder="Write your solution code here"
+                    className="min-h-48 w-full rounded-md border border-slate-300 bg-white p-3 text-sm font-mono text-slate-900 focus:border-blue-500 focus:outline-none"
+                  />
+                  {!feedback?.correct && (
+                    <Button
+                      onClick={() => void submitAnswer()}
+                      disabled={!userAnswer || isRunning}
+                      className="mt-3 w-full bg-blue-600 text-white hover:bg-blue-700"
+                      size="lg"
+                    >
+                      {isRunning ? "Running..." : "Submit Code"}
+                    </Button>
+                  )}
+                </div>
+
+                {(executionOutput || executionError) && (
+                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2">Your Output</p>
+                    <pre className="rounded-md bg-slate-900 p-3 text-sm text-green-300 overflow-x-auto whitespace-pre-wrap">
+                      <code>{executionError || executionOutput}</code>
+                    </pre>
+                  </div>
+                )}
+
+                {testCaseResults.length > 0 && (
+                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-3">Test Case Results</p>
+                    <div className="space-y-3">
+                      {testCaseResults.map((result, index) => (
+                        <div key={result.id} className={`rounded-md border p-3 ${result.passed ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-semibold text-slate-800">Test Case {index + 1}</p>
+                            <span className={`text-xs font-semibold ${result.passed ? "text-green-700" : "text-red-700"}`}>
+                              {result.passed ? "PASS" : "FAIL"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 mb-1">Expected Output</p>
+                          <pre className="rounded bg-slate-900 p-2 text-xs text-green-300 overflow-x-auto whitespace-pre-wrap">
+                            <code>{result.expectedOutput}</code>
+                          </pre>
+                          <p className="text-xs text-slate-500 mt-2 mb-1">Your Output</p>
+                          <pre className="rounded bg-slate-900 p-2 text-xs text-blue-200 overflow-x-auto whitespace-pre-wrap">
+                            <code>{result.userOutput}</code>
+                          </pre>
+                        </div>
+                      ))}
                     </div>
-                    <h3 className="text-2xl font-bold text-slate-900 mb-2">{lang.name}</h3>
-                    <p className="text-sm text-slate-600">{lang.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  </div>
+                )}
+
+                {feedback && (
+                  <div
+                    className={`p-4 rounded-lg flex items-start space-x-3 ${
+                      feedback.correct ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"
+                    }`}
+                  >
+                    {feedback.correct ? (
+                      <CheckCircle className="w-6 h-6 text-green-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <X className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <p className={`font-semibold ${feedback.correct ? "text-green-900" : "text-red-900"}`}>
+                        {feedback.correct ? "Correct! +50 XP" : "Incorrect"}
+                      </p>
+                      <p className={feedback.correct ? "text-green-700" : "text-red-700"}>{feedback.message}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  {feedback?.correct ? (
+                    <Button onClick={nextChallenge} className="w-full bg-blue-600 text-white hover:bg-blue-700" size="lg">
+                      Next Challenge Level
+                    </Button>
+                  ) : (
+                    <div className="space-y-3">
+                      {feedback && !feedback.correct && (
+                        <Button
+                          onClick={() => goToLearningChapter(currentChallenge.chapter_hint, selectedLanguage ?? undefined)}
+                          className="w-full bg-amber-600 text-white hover:bg-amber-700"
+                          size="lg"
+                        >
+                          Back to Learning
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </>
     )
   }
 
-  // Level selection view
-  if (!selectedLevel) {
-    const filteredLevels = levels.filter((level) => level.language === selectedLanguage.name)
+  // Main challenge list view (with difficulty filter and inline language buttons)
+  return (
+    <>
+      <NavigationBar />
+      <div className="min-h-screen bg-slate-100 p-4 md:p-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">Coding Challenges</h2>
+            <p className="text-slate-600">Solve challenges in any language. Each challenge can be solved up to 3 times (once per language) for up to 150 XP total.</p>
+          </div>
 
-    return (
-      <>
-        <NavigationBar />
-        <div className="min-h-screen bg-slate-100 p-4 md:p-8">
-          <div className="max-w-6xl mx-auto">
-            <Button
-              variant="outline"
-              onClick={() => setSelectedLanguage(null)}
-              className="mb-6 bg-white shadow-sm border-0 hover:shadow-md"
-            >
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Back to Languages
-            </Button>
+          {/* Difficulty Filter */}
+          <div className="mb-6 flex flex-wrap gap-3">
+            {(["all", "easy", "medium", "hard"] as const).map((difficulty) => (
+              <Button
+                key={difficulty}
+                onClick={() => setDifficultyFilter(difficulty)}
+                className={`${
+                  difficultyFilter === difficulty
+                    ? difficulty === "all"
+                      ? "bg-slate-700 text-white"
+                      : difficulty === "easy"
+                      ? "bg-green-600 text-white"
+                      : difficulty === "medium"
+                      ? "bg-yellow-600 text-white"
+                      : "bg-red-600 text-white"
+                    : "bg-white text-slate-900 border border-slate-300 hover:shadow-md"
+                }`}
+              >
+                {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+              </Button>
+            ))}
+          </div>
 
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <img src={selectedLanguage.icon} alt={selectedLanguage.name} className="w-20 h-20 object-contain" />
-                  <h2 className="text-3xl font-bold text-slate-900">{selectedLanguage.name} Challenges</h2>
-                </div>
-                <p className="text-slate-600">Test your programming skills with progressive challenges</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredLevels.map((level) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {levels
+              .filter((level) => difficultyFilter === "all" || level.difficulty === difficultyFilter)
+              .map((level) => {
                 const unlocked = isLevelUnlocked(level)
-                const completed = completedLevels.has(level.id)
+                const completedLanguages = getCompletedLanguagesForLevel(level.id)
+                const isCompleted = completedLanguages.length > 0
+                const isFullyCompleted = completedLanguages.length === 3
 
                 return (
                   <Card
                     key={level.id}
-                    className={`cursor-pointer transition-all bg-white shadow-sm border-0 ${
-                      unlocked ? "hover:shadow-md" : "opacity-50 cursor-not-allowed"
+                    className={`transition-all bg-white shadow-sm border-0 ${
+                      unlocked ? "hover:shadow-md" : "opacity-50"
                     }`}
-                    onClick={() => unlocked && (setSelectedLevel(level), loadChallenges(level.id))}
                   >
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div
                           className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                            completed ? "bg-green-50 border border-green-200" : unlocked ? "bg-blue-50 border border-blue-200" : "bg-slate-100 border border-slate-200"
+                            isCompleted ? "bg-green-50 border border-green-200" : unlocked ? "bg-blue-50 border border-blue-200" : "bg-slate-100 border border-slate-200"
                           }`}
                         >
-                          {completed ? (
+                          {isCompleted ? (
                             <CheckCircle className="w-6 h-6 text-green-600" />
                           ) : unlocked ? (
                             <Trophy className="w-6 h-6 text-blue-600" />
                           ) : (
-                            <Lock className="w-6 h-6 text-slate-400" />
+                            <Trophy className="w-6 h-6 text-slate-400" />
                           )}
                         </div>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                          level.difficulty === "easy" ? "bg-green-100 text-green-800" :
+                          level.difficulty === "medium" ? "bg-yellow-100 text-yellow-800" :
+                          "bg-red-100 text-red-800"
+                        }`}>
+                          {level.difficulty.toUpperCase()}
+                        </span>
                       </div>
-                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Level {level.level_number}</h3>
-                      <p className="text-sm text-slate-600">{level.title}</p>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-1">Level {level.level_number}</h3>
+                      <p className="text-sm text-slate-600 mb-4">{level.title}</p>
+                      
+                      {/* Language buttons */}
+                      <div className="flex flex-wrap gap-2">
+                        {["Python", "Java", "C++"].map((lang) => {
+                          const isCompleted = completedLanguages.includes(lang)
+                          const typedLang = lang as "Python" | "Java" | "C++"
+                          
+                          return (
+                            <Button
+                              key={lang}
+                              onClick={() => {
+                                if (unlocked) {
+                                  handleSelectLanguage(level, typedLang)
+                                }
+                              }}
+                              disabled={!unlocked}
+                              className={`text-xs py-1 px-3 h-auto ${
+                                isCompleted
+                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                  : unlocked
+                                  ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                              }`}
+                              variant="outline"
+                            >
+                              {lang} {isCompleted && "✓"}
+                            </Button>
+                          )
+                        })}
+                      </div>
                     </CardContent>
                   </Card>
                 )
               })}
-            </div>
           </div>
-        </div>
-      </>
-    )
-  }
-
-  // Challenge view
-  if (!currentChallenge) {
-    return (
-      <div className="min-h-screen bg-slate-100 p-4 md:p-8">
-        <div className="max-w-3xl mx-auto">
-          <Card className="bg-white shadow-sm border-0">
-            <CardContent className="p-8 text-center">
-              <Trophy className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">No Challenges Available</h3>
-              <Button onClick={() => setSelectedLevel(null)} className="mt-4 bg-blue-600 hover:bg-blue-700">
-                Back to Levels
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <>
-      <NavigationBar />
-      <div className="min-h-screen bg-slate-100 p-4 md:p-8">
-        <div className="max-w-3xl mx-auto">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setSelectedLevel(null)
-              setChallenges([])
-            }}
-            className="mb-6 bg-white shadow-sm border-0 hover:shadow-md"
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Back to Levels
-          </Button>
-
-          <Card className="bg-white shadow-sm border-0">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-2xl text-slate-900">
-                  Level {selectedLevel.level_number}: {selectedLevel.title}
-                </CardTitle>
-                <span className="text-sm text-slate-600">
-                  {currentChallengeIndex + 1} / {challenges.length}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <h4 className="text-lg font-semibold text-slate-900 mb-2">{currentChallenge.title}</h4>
-                <p className="text-slate-700">{currentChallenge.scenario}</p>
-                <ul className="mt-3 space-y-1 list-disc list-inside text-sm text-slate-600">
-                  {currentChallenge.requirements.map((item, idx) => (
-                    <li key={idx}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 mb-2">Expected Output</p>
-                <pre className="rounded-md bg-slate-900 p-3 text-sm text-green-300 overflow-x-auto whitespace-pre-wrap">
-                  <code>{currentChallenge.expected_output}</code>
-                </pre>
-              </div>
-
-              <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2">Write your code</p>
-                <textarea
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  placeholder="Write your solution code here"
-                  className="min-h-48 w-full rounded-md border border-slate-300 bg-white p-3 text-sm font-mono text-slate-900 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              {(executionOutput || executionError) && (
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2">Your Output</p>
-                  <pre className="rounded-md bg-slate-900 p-3 text-sm text-green-300 overflow-x-auto whitespace-pre-wrap">
-                    <code>{executionError || executionOutput}</code>
-                  </pre>
-                </div>
-              )}
-
-              {feedback && (
-                <div
-                  className={`p-4 rounded-lg flex items-start space-x-3 ${
-                    feedback.correct ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"
-                  }`}
-                >
-                  {feedback.correct ? (
-                    <CheckCircle className="w-6 h-6 text-green-600 shrink-0 mt-0.5" />
-                  ) : (
-                    <X className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
-                  )}
-                  <div>
-                    <p className={`font-semibold ${feedback.correct ? "text-green-900" : "text-red-900"}`}>
-                      {feedback.correct ? "Correct! +50 XP" : "Incorrect"}
-                    </p>
-                    <p className={feedback.correct ? "text-green-700" : "text-red-700"}>{feedback.message}</p>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                {!feedback ? (
-                  <Button onClick={() => void submitAnswer()} disabled={!userAnswer || isRunning} className="w-full bg-blue-600 text-white hover:bg-blue-700" size="lg">
-                    {isRunning ? "Running..." : "Submit Code"}
-                  </Button>
-                ) : (
-                  <>
-                    {feedback.correct ? (
-                      <Button onClick={nextChallenge} className="w-full bg-blue-600 text-white hover:bg-blue-700" size="lg">
-                        Next Challenge Level
-                      </Button>
-                    ) : (
-                      <div className="space-y-3">
-                        <Button
-                          onClick={() => {
-                            setFeedback(null)
-                            setExecutionOutput("")
-                            setExecutionError("")
-                            setUserAnswer(currentChallenge.starter_code)
-                          }}
-                          className="w-full bg-slate-700 text-white hover:bg-slate-800"
-                          size="lg"
-                        >
-                          Try Again
-                        </Button>
-                        <Button
-                          onClick={() => goToLearningChapter(currentChallenge.chapter_hint)}
-                          className="w-full bg-amber-600 text-white hover:bg-amber-700"
-                          size="lg"
-                        >
-                          Continue Learning
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </>

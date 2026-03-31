@@ -48,7 +48,7 @@ export default function ProfilePage() {
     java: { completed: 0, total: 10, learningCompleted: 0, learningTotal: 5, challengeCompleted: 0, challengeTotal: 5, xp: 0 },
     cpp: { completed: 0, total: 10, learningCompleted: 0, learningTotal: 5, challengeCompleted: 0, challengeTotal: 5, xp: 0 },
     totalXP: 0,
-    currentStreak: 0,
+    currentStreak: 1,
     achievements: [],
   })
 
@@ -110,8 +110,6 @@ export default function ProfilePage() {
   }
 
   const totalCompleted = userProgress.python.completed + userProgress.java.completed + userProgress.cpp.completed
-  const totalLevels = userProgress.python.total + userProgress.java.total + userProgress.cpp.total
-  const overallProgress = (totalCompleted / totalLevels) * 100
   const unlockedAchievements = userProgress.achievements.filter((achievement) => achievement.unlocked).length
 
   return (
@@ -179,29 +177,46 @@ export default function ProfilePage() {
 
         {/* Profile Content */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 space-y-8">
-          {/* Overall Progress Card */}
-          <Card className="bg-white shadow-sm border-0">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-900">
-                <Target className="w-5 h-5 text-blue-600" />
-                Overall Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Completed Levels</span>
-                  <span className="font-semibold">{totalCompleted} / {totalLevels}</span>
-                </div>
-                <Progress value={overallProgress} className="h-3" />
-                <p className="text-xs text-gray-500 text-right">{Math.round(overallProgress)}% Complete</p>
-              </div>
-            </CardContent>
-          </Card>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Languages Progress */}
             <div className="lg:col-span-2 space-y-6">
+              <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                <Target className="w-6 h-6 text-blue-600" />
+                Level Progress
+              </h2>
+
+              {languages.map((lang) => {
+                const progress = userProgress[lang.key]
+                const levelPercentage = progress.challengeTotal > 0 ? (progress.challengeCompleted / progress.challengeTotal) * 100 : 0
+
+                return (
+                  <Card key={`level-progress-${lang.name}`} className="overflow-hidden bg-white shadow-sm border-0 hover:shadow-md transition-shadow">
+                    <div className={`h-2 ${lang.color}`} />
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <img src={lang.icon} alt={lang.name} className="w-16 h-16 object-contain" />
+                          <div>
+                            <h3 className="text-xl font-bold text-slate-900">{lang.name}</h3>
+                            <p className="text-sm text-slate-500">
+                              {progress.challengeCompleted} of {progress.challengeTotal} levels completed
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Progress value={levelPercentage} className="h-2" />
+                        <div className="flex justify-between text-xs text-slate-500">
+                          <span>{Math.round(levelPercentage)}% complete</span>
+                          <span>{progress.challengeTotal - progress.challengeCompleted} levels remaining</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+
               <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                 <Code className="w-6 h-6 text-blue-600" />
                 Learning Progress
@@ -224,10 +239,6 @@ export default function ProfilePage() {
                               {progress.learningCompleted} of {progress.learningTotal} chapters completed
                             </p>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-blue-600">{progress.xp}</div>
-                          <div className="text-xs text-slate-500">XP Earned</div>
                         </div>
                       </div>
                       
