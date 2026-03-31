@@ -4,11 +4,11 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import NavigationBar from "@/components/NavigationBar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
-import { Trophy, BookOpen, Flame, Award, Mail, Calendar, Edit, Target, Code } from "lucide-react"
+import { Trophy, Flame, Award, Mail, Calendar, Edit, Target, Code } from "lucide-react"
 import { getProfileProgressSnapshot, type ProfileProgressSnapshot } from "@/lib/progress"
+import { supabase } from "@/lib/supabase"
 
 interface CourseStats {
   completed: number
@@ -43,6 +43,7 @@ export default function ProfilePage() {
   const [certificates, setCertificates] = useState<Map<string, GeneratedCertificate>>(new Map())
   const [selectedCertificate, setSelectedCertificate] = useState<GeneratedCertificate | null>(null)
   const [showCertificateModal, setShowCertificateModal] = useState(false)
+  const [joinedDateLabel, setJoinedDateLabel] = useState("Joined date unavailable")
   const [userProgress, setUserProgress] = useState<UserProgressType>({
     python: { completed: 0, total: 10, learningCompleted: 0, learningTotal: 5, challengeCompleted: 0, challengeTotal: 5, xp: 0 },
     java: { completed: 0, total: 10, learningCompleted: 0, learningTotal: 5, challengeCompleted: 0, challengeTotal: 5, xp: 0 },
@@ -63,9 +64,41 @@ export default function ProfilePage() {
 
     if (parsedUser?.id) {
       void loadProfileProgress(parsedUser.id)
+      void loadJoinedDate(parsedUser.id)
       loadCertificates(parsedUser.id)
     }
   }, [router])
+
+  const loadJoinedDate = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("created_at")
+        .eq("id", userId)
+        .maybeSingle()
+
+      if (error || !data?.created_at) {
+        setJoinedDateLabel("Joined date unavailable")
+        return
+      }
+
+      const joinedDate = new Date(data.created_at)
+      if (Number.isNaN(joinedDate.getTime())) {
+        setJoinedDateLabel("Joined date unavailable")
+        return
+      }
+
+      setJoinedDateLabel(
+        `Joined ${joinedDate.toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}`
+      )
+    } catch {
+      setJoinedDateLabel("Joined date unavailable")
+    }
+  }
 
   const loadProfileProgress = async (userId: string) => {
     const snapshot = await getProfileProgressSnapshot(userId)
@@ -109,8 +142,46 @@ export default function ProfilePage() {
     return null
   }
 
-  const totalCompleted = userProgress.python.completed + userProgress.java.completed + userProgress.cpp.completed
+  const statsTotalXP = userProgress.totalXP
   const unlockedAchievements = userProgress.achievements.filter((achievement) => achievement.unlocked).length
+  const badgeTiers = [
+    {
+      name: "Bronze",
+      minXP: 0,
+      color: "bg-amber-100 text-amber-800 border-amber-300",
+      fillColor: "bg-blue-600",
+      icon: "🥉",
+    },
+    {
+      name: "Silver",
+      minXP: 500,
+      color: "bg-slate-100 text-slate-700 border-slate-300",
+      fillColor: "bg-blue-600",
+      icon: "🥈",
+    },
+    {
+      name: "Gold",
+      minXP: 1500,
+      color: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      fillColor: "bg-blue-600",
+      icon: "🥇",
+    },
+    {
+      name: "Platinum",
+      minXP: 3000,
+      color: "bg-cyan-100 text-cyan-800 border-cyan-300",
+      fillColor: "bg-blue-600",
+      icon: "💎",
+    },
+  ] as const
+  const currentTierIndex = badgeTiers.reduce((acc, tier, index) => (userProgress.totalXP >= tier.minXP ? index : acc), 0)
+  const currentTier = badgeTiers[currentTierIndex]
+  const nextTier = currentTierIndex < badgeTiers.length - 1 ? badgeTiers[currentTierIndex + 1] : null
+  const currentTierStart = currentTier.minXP
+  const currentTierEnd = nextTier ? nextTier.minXP : currentTier.minXP + 1000
+  const tierRange = Math.max(1, currentTierEnd - currentTierStart)
+  const tierProgress = Math.min(100, Math.max(0, ((userProgress.totalXP - currentTierStart) / tierRange) * 100))
+  const xpRemaining = nextTier ? Math.max(0, nextTier.minXP - userProgress.totalXP) : 0
 
   return (
     <>
@@ -135,9 +206,9 @@ export default function ProfilePage() {
                 <div className="flex-1 text-center md:text-left">
                   <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
                     <h1 className="text-4xl font-bold text-slate-900">{user.username || "Player"}</h1>
-                    <Badge className="bg-blue-600 text-white hover:bg-blue-700 w-fit mx-auto md:mx-0">
-                      Level {Math.floor(userProgress.totalXP / 100)}
-                    </Badge>
+                    <span className={`px-3 py-1 rounded-full text-sm border font-semibold ${currentTier.color} self-center md:self-auto`}>
+                      {currentTier.name}
+                    </span>
                   </div>
                   <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-4 text-slate-600 mb-4">
                     <div className="flex items-center gap-2">
@@ -146,27 +217,25 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
-                      <span className="text-sm">Joined November 2024</span>
+                      <span className="text-sm">{joinedDateLabel}</span>
                     </div>
                   </div>
                   
-                  {/* Quick Stats */}
-                  <div className="flex flex-wrap justify-center md:justify-start gap-6 mt-6">
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-slate-900">{userProgress.totalXP}</div>
-                      <div className="text-sm text-slate-500">Total XP</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-slate-900">{totalCompleted}</div>
-                      <div className="text-sm text-slate-500">Levels Completed</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-slate-900">{userProgress.currentStreak}</div>
-                      <div className="text-sm text-slate-500">Day Streak</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-slate-900">{unlockedAchievements}</div>
-                      <div className="text-sm text-slate-500">Achievements</div>
+                  {/* Badge Progress */}
+                  <div className="mt-6 space-y-3">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="h-3 w-full rounded-full bg-gray-300 overflow-hidden">
+                          <div
+                            className={`h-full ${currentTier.fillColor} transition-all duration-500`}
+                            style={{ width: `${tierProgress}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-slate-600 whitespace-nowrap">{userProgress.totalXP} XP</span>
+                      </div>
+                      <p className="text-xs text-slate-500 text-right">
+                        {nextTier ? `${xpRemaining} XP remaining to ${nextTier.name}` : "Max tier reached"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -282,7 +351,7 @@ export default function ProfilePage() {
                       <Trophy className="w-5 h-5 text-amber-600" />
                       <span className="font-medium text-slate-700">Total XP</span>
                     </div>
-                    <span className="text-xl font-bold text-amber-600">{userProgress.totalXP}</span>
+                    <span className="text-xl font-bold text-amber-600">{statsTotalXP}</span>
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100">
@@ -291,14 +360,6 @@ export default function ProfilePage() {
                       <span className="font-medium text-slate-700">Current Streak</span>
                     </div>
                     <span className="text-xl font-bold text-orange-600">{userProgress.currentStreak} days</span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <div className="flex items-center gap-3">
-                      <BookOpen className="w-5 h-5 text-blue-600" />
-                      <span className="font-medium text-slate-700">Levels Done</span>
-                    </div>
-                    <span className="text-xl font-bold text-blue-600">{totalCompleted}</span>
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-100">

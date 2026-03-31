@@ -403,20 +403,33 @@ export async function getProfileProgressSnapshot(userId: string): Promise<Profil
         .maybeSingle(),
     ])
 
+    let challengeRows = challengeResult.data
+    let challengeError = challengeResult.error
+
+    // Fallback for schemas without `completed` column
+    if (challengeError) {
+      const fallbackChallengeRead = await supabase
+        .from("challenge_level_progress")
+        .select("language,level_id")
+        .eq("user_id", userId)
+
+      challengeRows = fallbackChallengeRead.data
+      challengeError = fallbackChallengeRead.error
+    }
+
     if (!learningResult.error) {
       for (const row of learningResult.data ?? []) {
         const key = LANGUAGE_ID_TO_KEY[String(row.language_id)]
         if (!key) continue
         snapshot[key].completed += 1
         snapshot[key].learningCompleted += 1
-        snapshot[key].xp += 25
       }
     }
 
-    if (!challengeResult.error) {
+    if (!challengeError) {
       // Count unique levels and total language-level combinations
       const levelLanguageMap = new Map<string, Set<string>>()
-      for (const row of challengeResult.data ?? []) {
+      for (const row of challengeRows ?? []) {
         const rowLanguages = parseStoredLanguages(row.language)
         if (!levelLanguageMap.has(row.level_id)) {
           levelLanguageMap.set(row.level_id, new Set())
@@ -426,19 +439,16 @@ export async function getProfileProgressSnapshot(userId: string): Promise<Profil
         }
       }
 
-      // Count unique levels (for display)
-      const uniqueLevels = levelLanguageMap.size
-
-      // Calculate XP: 50 per language per level
+      // Total XP is challenge-based only: 50 XP per completed level-language pair
       let totalChallengeXP = 0
-      for (const [levelId, languages] of levelLanguageMap.entries()) {
+      for (const [, languages] of levelLanguageMap.entries()) {
         totalChallengeXP += languages.size * 50
       }
+      snapshot.totalXP = totalChallengeXP
 
-      // Add language-specific progress
-      for (const row of challengeResult.data ?? []) {
-        const rowLanguages = parseStoredLanguages(row.language)
-        for (const lang of rowLanguages) {
+      // Add language-specific progress using deduplicated level-language pairs
+      for (const [, languages] of levelLanguageMap.entries()) {
+        for (const lang of languages) {
           const key = LANGUAGE_NAME_TO_KEY[String(lang).toLowerCase()]
           if (!key) continue
           snapshot[key].completed += 1
@@ -452,11 +462,14 @@ export async function getProfileProgressSnapshot(userId: string): Promise<Profil
       snapshot.currentStreak = Math.max(1, Number(statsResult.data.current_streak ?? 1))
     }
 
-    snapshot.totalXP = snapshot.python.xp + snapshot.java.xp + snapshot.cpp.xp
+    // Keep total XP aligned with challenge-only XP model
+    if (snapshot.totalXP === 0) {
+      snapshot.totalXP = snapshot.python.xp + snapshot.java.xp + snapshot.cpp.xp
+    }
 
     // Calculate total unique challenges for achievements
     const levelLanguageMap = new Map<string, Set<string>>()
-    for (const row of challengeResult.data ?? []) {
+    for (const row of challengeRows ?? []) {
       const rowLanguages = parseStoredLanguages(row.language)
       if (!levelLanguageMap.has(row.level_id)) {
         levelLanguageMap.set(row.level_id, new Set())

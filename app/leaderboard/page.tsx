@@ -6,17 +6,30 @@ import NavigationBar from "@/components/NavigationBar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Trophy, Medal, Award } from "lucide-react"
 
-interface LeaderboardEntry {
-  rank: number
-  username: string
-  xp: number
-  levelsCompleted: number
+type LeaderboardType = "overall" | "python" | "java" | "cpp"
+
+interface LeaderboardPlayer {
   userId: string
+  username: string
+  totalXP: number
+  levels: {
+    python: number
+    java: number
+    cpp: number
+  }
+}
+
+interface LeaderboardRow {
+  rank: number
+  userId: string
+  username: string
+  value: number
 }
 
 export default function LeaderboardPage() {
   const router = useRouter()
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([])
+  const [players, setPlayers] = useState<LeaderboardPlayer[]>([])
+  const [activeBoard, setActiveBoard] = useState<LeaderboardType>("overall")
   const [loading, setLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState<any>(null)
 
@@ -32,21 +45,43 @@ export default function LeaderboardPage() {
 
   const loadLeaderboard = () => {
     // Mock data - replace with your API call
-    const mockEntries: LeaderboardEntry[] = [
-      { rank: 1, username: "CodeMaster", xp: 2500, levelsCompleted: 25, userId: "user1" },
-      { rank: 2, username: "PythonPro", xp: 2300, levelsCompleted: 23, userId: "user2" },
-      { rank: 3, username: "JavaGuru", xp: 2100, levelsCompleted: 21, userId: "user3" },
-      { rank: 4, username: "CppNinja", xp: 1900, levelsCompleted: 19, userId: "user4" },
-      { rank: 5, username: "DevExpert", xp: 1700, levelsCompleted: 17, userId: "user5" },
-      { rank: 6, username: "WebWizard", xp: 1500, levelsCompleted: 15, userId: "user6" },
-      { rank: 7, username: "BugHunter", xp: 1300, levelsCompleted: 13, userId: "user7" },
-      { rank: 8, username: "AlgoAce", xp: 1100, levelsCompleted: 11, userId: "user8" },
-      { rank: 9, username: "DataDev", xp: 900, levelsCompleted: 9, userId: "user9" },
-      { rank: 10, username: "StackMaster", xp: 700, levelsCompleted: 7, userId: "user10" },
+    const mockPlayers: LeaderboardPlayer[] = [
+      { userId: "user1", username: "CodeMaster", totalXP: 2500, levels: { python: 9, java: 8, cpp: 8 } },
+      { userId: "user2", username: "PythonPro", totalXP: 2300, levels: { python: 10, java: 7, cpp: 6 } },
+      { userId: "user3", username: "JavaGuru", totalXP: 2100, levels: { python: 6, java: 10, cpp: 5 } },
+      { userId: "user4", username: "CppNinja", totalXP: 1900, levels: { python: 5, java: 6, cpp: 8 } },
+      { userId: "user5", username: "DevExpert", totalXP: 1700, levels: { python: 6, java: 6, cpp: 5 } },
+      { userId: "user6", username: "WebWizard", totalXP: 1500, levels: { python: 5, java: 5, cpp: 5 } },
+      { userId: "user7", username: "BugHunter", totalXP: 1300, levels: { python: 4, java: 4, cpp: 5 } },
+      { userId: "user8", username: "AlgoAce", totalXP: 1100, levels: { python: 4, java: 4, cpp: 3 } },
+      { userId: "user9", username: "DataDev", totalXP: 900, levels: { python: 3, java: 3, cpp: 3 } },
+      { userId: "user10", username: "StackMaster", totalXP: 700, levels: { python: 2, java: 2, cpp: 3 } },
     ]
-    setEntries(mockEntries)
+    setPlayers(mockPlayers)
     setLoading(false)
   }
+
+  const getLeaderboardRows = (type: LeaderboardType): LeaderboardRow[] => {
+    const sorted = [...players].sort((a, b) => {
+      if (type === "overall") return b.totalXP - a.totalXP
+      return b.levels[type] - a.levels[type]
+    })
+
+    return sorted.map((player, index) => ({
+      rank: index + 1,
+      userId: player.userId,
+      username: player.username,
+      value: type === "overall" ? player.totalXP : player.levels[type],
+    }))
+  }
+
+  const boardRows = getLeaderboardRows(activeBoard)
+  const userEntry = boardRows.find((e) => e.username === currentUser?.username)
+  const boardTitle =
+    activeBoard === "overall"
+      ? "Overall Leaderboard"
+      : `${activeBoard.charAt(0).toUpperCase()}${activeBoard.slice(1)} Leaderboard`
+  const valueHeader = activeBoard === "overall" ? "Total XP" : "Levels Done"
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -75,16 +110,35 @@ export default function LeaderboardPage() {
     )
   }
 
-  const userEntry = entries.find((e) => e.username === currentUser?.username)
-
   return (
     <>
       <NavigationBar />
       <div className="min-h-screen bg-slate-100 p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">Daily Leaderboard</h2>
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">Leaderboards</h2>
             <p className="text-slate-600">Top performers • Resets daily at 12:00 AM</p>
+          </div>
+
+          <div className="mb-6 flex flex-wrap gap-2">
+            {([
+              { key: "overall", label: "Overall" },
+              { key: "python", label: "Python" },
+              { key: "java", label: "Java" },
+              { key: "cpp", label: "C++" },
+            ] as Array<{ key: LeaderboardType; label: string }>).map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setActiveBoard(item.key)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                  activeBoard === item.key
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
 
           {/* User's Current Rank Card */}
@@ -101,19 +155,18 @@ export default function LeaderboardPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-blue-100 mb-1 text-sm">Total XP</p>
-                  <p className="text-3xl font-bold">{userEntry.xp}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-blue-100 mb-1 text-sm">Levels Completed</p>
-                  <p className="text-3xl font-bold">{userEntry.levelsCompleted}</p>
+                  <p className="text-blue-100 mb-1 text-sm">{valueHeader}</p>
+                  <p className="text-3xl font-bold">
+                    {userEntry.value.toLocaleString()}
+                    {activeBoard === "overall" ? "" : ""}
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
           {/* Leaderboard Table */}
-          {entries.length === 0 ? (
+          {boardRows.length === 0 ? (
             <Card className="bg-white shadow-sm border-0">
               <CardContent className="p-8 text-center">
                 <Trophy className="w-16 h-16 text-slate-400 mx-auto mb-4" />
@@ -130,12 +183,11 @@ export default function LeaderboardPage() {
                       <tr>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">Rank</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">Player</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">XP</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">Levels</th>
+                        <th className="px-6 py-4 text-center text-sm font-semibold text-slate-600">{valueHeader}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {entries.map((entry) => {
+                      {boardRows.map((entry) => {
                         const isCurrentUser = entry.username === currentUser?.username
                         return (
                           <tr
@@ -164,14 +216,9 @@ export default function LeaderboardPage() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-sm font-semibold text-gray-900">{entry.xp.toLocaleString()}</span>
-                              <span className="text-xs text-gray-500 ml-1">XP</span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                                {entry.levelsCompleted} levels
-                              </span>
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <span className="text-sm font-semibold text-gray-900">{entry.value.toLocaleString()}</span>
+                              {activeBoard === "overall" && <span className="text-xs text-gray-500 ml-1">XP</span>}
                             </td>
                           </tr>
                         )
