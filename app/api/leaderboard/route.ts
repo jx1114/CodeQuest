@@ -12,6 +12,7 @@ interface ChallengeProgressRow {
 interface UserRow {
 	id: string
 	username: string
+	avatar_url: string | null
 }
 
 interface LeaderboardStatsRow {
@@ -58,7 +59,7 @@ export async function GET() {
 		const admin = createClient(supabaseUrl, serviceRoleKey || anonKey || "")
 
 		const [usersResult, leaderboardStatsResult, challengeResult] = await Promise.all([
-			admin.from("users").select("id,username"),
+			admin.from("users").select("id,username,avatar_url"),
 			admin.from("leaderboard_stats").select("user_id,total_points,python_levels_done,java_levels_done,cpp_levels_done"),
 			admin.from("challenge_level_progress").select("user_id,level_id,language").eq("completed", true),
 		])
@@ -155,6 +156,7 @@ export async function GET() {
 			return {
 				userId: user.id,
 				username: user.username,
+				avatarUrl: user.avatar_url ?? null,
 				totalXP: typeof statsXP === "number" ? statsXP : calculatedXP,
 				levels: {
 					python: storedLevels ? storedLevels.python : python,

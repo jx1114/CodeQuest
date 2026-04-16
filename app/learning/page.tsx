@@ -261,7 +261,8 @@ export default function LearningPage() {
       .toLowerCase()
       .replace(/\s+/g, " ")
 
-  const normalizeOutput = (value: string) => normalizeAnswer(value.replace(/\r\n/g, "\n"))
+  const normalizeOutput = (value: string) =>
+    normalizeAnswer(value.replace(/\\n/g, "\n").replace(/\r\n/g, "\n"))
 
   const formatLessonOverviewHtml = (html: string) => {
     const keyTermsPattern = /<p>\s*<strong>\s*Key terms:\s*<\/strong>\s*([\s\S]*?)<\/p>/i
@@ -470,7 +471,7 @@ export default function LearningPage() {
                   <h4 className="text-lg font-semibold text-slate-900 mb-3">Mini Practice</h4>
                   <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 mb-2">Target Output</p>
-                    <pre className="rounded-md bg-slate-900 p-3 text-sm text-green-300 overflow-x-auto"><code>{selectedChapter.mini_practice_output}</code></pre>
+                    <pre className="rounded-md bg-slate-900 p-3 text-sm text-green-300 overflow-x-auto whitespace-pre-wrap"><code>{selectedChapter.mini_practice_output.replace(/\\n/g, "\n")}</code></pre>
                   </div>
                   <p className="text-slate-700 mb-4">{selectedChapter.mini_practice_question}</p>
 

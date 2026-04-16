@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 interface LeaderboardPlayer {
   userId: string
   username: string
+  avatarUrl?: string | null
   totalXP: number
   levels: {
     python: number
@@ -22,6 +23,7 @@ interface LeaderboardRow {
   rank: number
   userId: string
   username: string
+  avatarUrl?: string | null
   value: number
 }
 
@@ -73,6 +75,7 @@ export default function LeaderboardPage() {
       rank: index + 1,
       userId: player.userId,
       username: player.username,
+      avatarUrl: player.avatarUrl,
       value: player.totalXP,
     }))
   }
@@ -190,9 +193,17 @@ export default function LeaderboardPage() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
-                                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-3">
-                                  {entry.username.charAt(0).toUpperCase()}
-                                </div>
+                                {entry.avatarUrl ? (
+                                  <img
+                                    src={entry.avatarUrl}
+                                    alt={`${entry.username} avatar`}
+                                    className="w-10 h-10 rounded-full object-cover mr-3"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-3">
+                                    {entry.username.charAt(0).toUpperCase()}
+                                  </div>
+                                )}
                                 <div>
                                   <p className="text-sm font-medium text-gray-900">
                                     {entry.username}

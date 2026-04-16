@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type ChangeEvent } from "react"
 import { useRouter } from "next/navigation"
 import NavigationBar from "@/components/NavigationBar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -40,6 +40,8 @@ interface GeneratedCertificate {
 export default function ProfilePage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState("")
   const [certificates, setCertificates] = useState<Map<string, GeneratedCertificate>>(new Map())
   const [selectedCertificate, setSelectedCertificate] = useState<GeneratedCertificate | null>(null)
   const [showCertificateModal, setShowCertificateModal] = useState(false)
@@ -68,6 +70,87 @@ export default function ProfilePage() {
       loadCertificates(parsedUser.id)
     }
   }, [router])
+
+  const readImageAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result
+        if (typeof result === "string") {
+          resolve(result)
+          return
+        }
+        reject(new Error("Failed to read image file."))
+      }
+      reader.onerror = () => reject(new Error("Failed to read image file."))
+      reader.readAsDataURL(file)
+    })
+
+  const optimizeAvatarDataUrl = (inputDataUrl: string) =>
+    new Promise<string>((resolve, reject) => {
+      const image = new Image()
+      image.onload = () => {
+        const maxDimension = 320
+        const ratio = Math.min(1, maxDimension / Math.max(image.width, image.height))
+        const width = Math.max(1, Math.round(image.width * ratio))
+        const height = Math.max(1, Math.round(image.height * ratio))
+
+        const canvas = document.createElement("canvas")
+        canvas.width = width
+        canvas.height = height
+
+        const context = canvas.getContext("2d")
+        if (!context) {
+          reject(new Error("Failed to process image."))
+          return
+        }
+
+        context.drawImage(image, 0, 0, width, height)
+        resolve(canvas.toDataURL("image/jpeg", 0.84))
+      }
+      image.onerror = () => reject(new Error("Failed to process image."))
+      image.src = inputDataUrl
+    })
+
+  const handleAvatarFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0]
+    event.target.value = ""
+
+    if (!selectedFile || !user?.id) {
+      return
+    }
+
+    if (!selectedFile.type.startsWith("image/")) {
+      setAvatarError("Please choose an image file.")
+      return
+    }
+
+    setIsUploadingAvatar(true)
+    setAvatarError("")
+
+    try {
+      const rawDataUrl = await readImageAsDataUrl(selectedFile)
+      const optimizedDataUrl = await optimizeAvatarDataUrl(rawDataUrl)
+
+      const { error } = await supabase
+        .from("users")
+        .update({ avatar_url: optimizedDataUrl })
+        .eq("id", user.id)
+
+      if (error) {
+        throw error
+      }
+
+      const nextUser = { ...user, avatar_url: optimizedDataUrl }
+      setUser(nextUser)
+      sessionStorage.setItem("user", JSON.stringify(nextUser))
+    } catch (error) {
+      console.error("Failed to upload avatar", error)
+      setAvatarError("Failed to upload photo. Please try again.")
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
 
   const loadJoinedDate = async (userId: string) => {
     try {
@@ -194,12 +277,30 @@ export default function ProfilePage() {
               <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
                 {/* Avatar */}
                 <div className="relative">
-                  <div className="w-32 h-32 rounded-full bg-blue-400 flex items-center justify-center text-5xl font-bold text-white shadow-lg">
-                    {user.username?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
+                  <div className="w-32 h-32 rounded-full bg-blue-400 overflow-hidden flex items-center justify-center text-5xl font-bold text-white shadow-lg">
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      user.username?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()
+                    )}
                   </div>
-                  <button className="absolute bottom-0 right-0 bg-white text-gray-700 rounded-full p-2 shadow-lg hover:bg-gray-100 transition border border-gray-200">
+                  <label
+                    htmlFor="avatar-upload"
+                    className="absolute bottom-0 right-0 bg-white text-gray-700 rounded-full p-2 shadow-lg hover:bg-gray-100 transition border border-gray-200 cursor-pointer"
+                    title="Upload profile photo"
+                  >
                     <Edit className="w-4 h-4" />
-                  </button>
+                  </label>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(event) => void handleAvatarFileChange(event)}
+                    disabled={isUploadingAvatar}
+                  />
+                  {isUploadingAvatar && <p className="text-xs text-slate-500 mt-2 text-center">Uploading...</p>}
+                  {avatarError && <p className="text-xs text-red-600 mt-2 text-center">{avatarError}</p>}
                 </div>
 
                 {/* User Info */}
