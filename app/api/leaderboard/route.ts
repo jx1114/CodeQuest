@@ -12,7 +12,7 @@ interface ChallengeProgressRow {
 interface UserRow {
 	id: string
 	username: string
-	avatar_url: string | null
+	avatar_url?: string | null
 }
 
 interface LeaderboardStatsRow {
