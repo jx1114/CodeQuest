@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import NavigationBar from "@/components/NavigationBar"
 import { Card, CardContent } from "@/components/ui/card"
-import { Trophy, Medal, Award } from "lucide-react"
+import { Trophy, Medal, Award, RefreshCw } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface LeaderboardPlayer {
   userId: string
@@ -113,8 +114,19 @@ export default function LeaderboardPage() {
       <div className="min-h-screen bg-slate-100 p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">Leaderboards</h2>
-            <p className="text-slate-600">Top performers • Resets daily at 12:00 AM</p>
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-3xl font-bold text-slate-900">Leaderboards</h2>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void loadLeaderboard()}
+                disabled={loading}
+                className="shrink-0 bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
 
           {/* User's Current Rank Card */}

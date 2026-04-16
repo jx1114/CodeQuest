@@ -42,6 +42,19 @@ export interface ProfileProgressSnapshot {
   achievements: ProfileAchievement[]
 }
 
+export function getNewlyUnlockedAchievements(
+  previousSnapshot: ProfileProgressSnapshot | null,
+  nextSnapshot: ProfileProgressSnapshot
+): ProfileAchievement[] {
+  const previouslyUnlocked = new Set(
+    previousSnapshot?.achievements.filter((achievement) => achievement.unlocked).map((achievement) => achievement.id) ?? []
+  )
+
+  return nextSnapshot.achievements.filter(
+    (achievement) => achievement.unlocked && !previouslyUnlocked.has(achievement.id)
+  )
+}
+
 const LANGUAGE_ID_TO_KEY: Record<string, "python" | "java" | "cpp"> = {
   "1": "python",
   "2": "java",

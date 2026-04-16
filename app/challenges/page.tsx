@@ -6,7 +6,15 @@ import NavigationBar from "@/components/NavigationBar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trophy, CheckCircle, X, ChevronLeft } from "lucide-react"
-import { getCompletedChallengeLevels, markChallengeLevelComplete } from "@/lib/progress"
+import AchievementUnlockModal from "@/components/AchievementUnlockModal"
+import {
+  getCompletedChallengeLevels,
+  getNewlyUnlockedAchievements,
+  getProfileProgressSnapshot,
+  markChallengeLevelComplete,
+  type ProfileAchievement,
+  type ProfileProgressSnapshot,
+} from "@/lib/progress"
 
 interface ChallengeLevel {
   id: string
@@ -66,6 +74,8 @@ export default function ChallengesPage() {
   const [isRunning, setIsRunning] = useState(false)
   const [completedLevels, setCompletedLevels] = useState<Map<string, Set<string>>>(new Map()) // level_id -> Set<languages>
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
+  const [achievementUnlocks, setAchievementUnlocks] = useState<ProfileAchievement[]>([])
+  const [showAchievementUnlockModal, setShowAchievementUnlockModal] = useState(false)
 
   useEffect(() => {
     const userData = sessionStorage.getItem("user")
@@ -564,11 +574,19 @@ export default function ChallengesPage() {
         })
 
         if (user?.id) {
+          const previousSnapshot: ProfileProgressSnapshot = await getProfileProgressSnapshot(user.id)
           await markChallengeLevelComplete({
             userId: user.id,
             levelId: selectedLevel.id,
             language: selectedLanguage,
           })
+
+          const nextSnapshot = await getProfileProgressSnapshot(user.id)
+          const unlockedAchievements = getNewlyUnlockedAchievements(previousSnapshot, nextSnapshot)
+          if (unlockedAchievements.length > 0) {
+            setAchievementUnlocks(unlockedAchievements)
+            setShowAchievementUnlockModal(true)
+          }
         }
       }
     }
@@ -839,6 +857,14 @@ export default function ChallengesPage() {
 
     return (
       <>
+        <AchievementUnlockModal
+          open={showAchievementUnlockModal}
+          achievements={achievementUnlocks}
+          onClose={() => {
+            setShowAchievementUnlockModal(false)
+            setAchievementUnlocks([])
+          }}
+        />
         <NavigationBar />
         <div className="min-h-screen bg-slate-100 p-4 md:p-8">
           <div className="max-w-3xl mx-auto">

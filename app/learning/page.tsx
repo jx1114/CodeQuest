@@ -38,6 +38,12 @@ interface Chapter {
   order_index: number
 }
 
+interface LearningCatalogResponse {
+  languages: Language[]
+  courses: Course[]
+  chapters: Chapter[]
+}
+
 interface Certificate {
   id: string
   languageId: string
@@ -55,6 +61,7 @@ export default function LearningPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [chapters, setChapters] = useState<Chapter[]>([])
+  const [catalog, setCatalog] = useState<LearningCatalogResponse | null>(null)
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null)
   const [progress, setProgress] = useState<Map<string, boolean>>(new Map())
   const [practiceAnswer, setPracticeAnswer] = useState("")
@@ -88,14 +95,14 @@ export default function LearningPage() {
       }
     }
     
-    loadLanguages()
+    void loadLearningCatalog()
   }, [router])
 
   useEffect(() => {
-    if (selectedLanguage) {
+    if (selectedLanguage && catalog) {
       loadCourses(selectedLanguage.id)
     }
-  }, [selectedLanguage])
+  }, [selectedLanguage, catalog])
 
   useEffect(() => {
     if (!user?.id) return
@@ -186,210 +193,47 @@ export default function LearningPage() {
     }
   }, [selectedLanguage, chapters, pendingNavigation])
 
-  const loadLanguages = () => {
-    // Mock data - replace with your API call
-    const mockLanguages: Language[] = [
-      {
-        id: "1",
-        name: "Python",
-        description: "Learn Python from basics to advanced concepts. Perfect for beginners and data science.",
-        icon: "/Python-Logo.png",
-      },
-      {
-        id: "2",
-        name: "Java",
-        description: "Master object-oriented programming with Java. Build enterprise applications.",
-        icon: "/Java-Logo.png",
-      },
-      {
-        id: "3",
-        name: "C++",
-        description: "Dive into systems programming and high-performance applications with C++.",
-        icon: "/C++-Logo.png",
-      },
-    ]
-    setLanguages(mockLanguages)
-    setLoading(false)
+  const loadLearningCatalog = async () => {
+    try {
+      const response = await fetch("/api/learning-content", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to load learning content")
+      }
+
+      const payload = (await response.json()) as LearningCatalogResponse
+      setCatalog(payload)
+      setLanguages(payload.languages ?? [])
+      setCourses([])
+      setChapters([])
+    } catch (error) {
+      console.error("Failed to load learning catalog", error)
+      setCatalog(null)
+      setLanguages([])
+      setCourses([])
+      setChapters([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const loadCourses = (languageId: string) => {
-    // Mock data - replace with your API call
-    const mockCourses: Course[] = [
-      {
-        id: "c1",
-        language_id: languageId,
-        title: "Complete Beginner Course",
-        description: "Start your programming journey from scratch",
-        order_index: 1,
-      },
-    ]
-    setCourses(mockCourses)
-    setSelectedCourse(mockCourses[0])
+    const nextCourses = catalog?.courses.filter((course) => course.language_id === languageId).sort((a, b) => a.order_index - b.order_index) ?? []
+    setCourses(nextCourses)
+    setSelectedCourse(nextCourses[0] ?? null)
   }
 
   const loadChapters = async (courseId: string, languageId?: string) => {
-    const currentLanguage = languageId === "2" ? "Java" : languageId === "3" ? "C++" : "Python"
-
-    const mockChapters: Chapter[] = [
-      {
-        id: "ch1",
-        course_id: courseId,
-        title: "Introduction & Setup",
-        description: `Understand ${currentLanguage} ecosystem and environment setup`,
-        explanation_html: `
-          <p>This chapter introduces ${currentLanguage} and the basic terms you will use in the course.</p>
-          <p><strong>Terms:</strong> <code>compiler/interpreter</code>, <code>syntax</code>, <code>runtime</code>, <code>output</code>.</p>
-          <ul>
-            <li>Where ${currentLanguage} is used</li>
-            <li>How code is executed</li>
-            <li>How to run a first program</li>
-          </ul>
-        `,
-        example_html:
-          currentLanguage === "Java"
-            ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-purple-300">public class</span> Main {\n  <span class="text-cyan-300">public static void</span> main(String[] args) {\n    <span class="text-amber-300">System.out.println</span>(<span class="text-green-300">\"Hello, World!\"</span>);\n  }\n}</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> Hello, World!</p>`
-            : currentLanguage === "C++"
-            ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-purple-300">#include</span> &lt;iostream&gt;\n<span class="text-cyan-300">int</span> main() {\n  <span class="text-amber-300">std::cout</span> &lt;&lt; <span class="text-green-300">\"Hello, World!\"</span> &lt;&lt; std::endl;\n  <span class="text-purple-300">return</span> 0;\n}</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> Hello, World!</p>`
-            : `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-amber-300">print</span>(<span class="text-green-300">\"Hello, World!\"</span>)</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> Hello, World!</p>`,
-        mini_practice_example_html: currentLanguage === "Python"
-          ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>print(<span class="text-green-300">\"Welcome\"</span>)</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> Welcome</p>`
-          : currentLanguage === "Java"
-          ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>System.out.println(<span class="text-green-300">\"Welcome\"</span>);</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> Welcome</p>`
-          : `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>std::cout &lt;&lt; <span class="text-green-300">\"Welcome\"</span> &lt;&lt; std::endl;</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> Welcome</p>`,
-        mini_practice_output: "CodeQuest",
-        mini_practice_question: "Write code that produces exactly the target output.",
-        mini_practice_answer: currentLanguage === "Python" ? "print(\"CodeQuest\")" : currentLanguage === "Java" ? "System.out.println(\"CodeQuest\");" : "std::cout << \"CodeQuest\" << std::endl;",
-        order_index: 1,
-      },
-      {
-        id: "ch2",
-        course_id: courseId,
-        title: "Variables & Data Types",
-        description: "Store, update, and convert values safely",
-        explanation_html: `
-          <p>Introduction to variables and data types.</p>
-          <p><strong>Terms:</strong> <code>variable</code>, <code>data type</code>, <code>assignment</code>, <code>literal</code>, <code>formatting</code>, <code>rounding</code>.</p>
-          <ul>
-            <li>Choose correct type for each value</li>
-            <li>Use descriptive variable names</li>
-            <li>Understand assignment and reassignment</li>
-            <li>Format decimals to specific precision</li>
-          </ul>
-        `,
-        example_html:
-          currentLanguage === "Java"
-            ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-cyan-300">int</span> age = <span class="text-orange-300">21</span>;\n<span class="text-cyan-300">double</span> score = <span class="text-orange-300">95.5</span>;\nSystem.out.println(age);\n<br><span class="text-amber-300">// Formatted decimal output</span>\n<span class="text-cyan-300">double</span> price = <span class="text-orange-300">94.50</span>;\nSystem.out.printf(<span class="text-green-300">\"Price: %.2f\"</span>, price);</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 21<br>Price: 94.50</p>`
-            : currentLanguage === "C++"
-            ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-cyan-300">int</span> age = <span class="text-orange-300">21</span>;\nstd::cout &lt;&lt; age &lt;&lt; std::endl;\n<br><span class="text-amber-300">// Formatted decimal output</span>\n<span class="text-cyan-300">double</span> price = <span class="text-orange-300">94.50</span>;\nstd::cout &lt;&lt; std::fixed &lt;&lt; std::setprecision(<span class="text-orange-300">2</span>) &lt;&lt; <span class="text-green-300">\"Price: \"</span> &lt;&lt; price &lt;&lt; std::endl;</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 21<br>Price: 94.50</p>`
-            : `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>age = <span class="text-orange-300">21</span>\nprint(age)\n<br><span class="text-amber-300"># Formatted decimal output</span>\nprice = <span class="text-orange-300">94.50</span>\nprint(<span class="text-green-300">f\"Price: {price:.2f}\"</span>)</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 21<br>Price: 94.50</p>`,
-        mini_practice_example_html: currentLanguage === "Python"
-          ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>points = <span class="text-orange-300">10</span>\nprint(points)\nrevenue = <span class="text-orange-300">94.50</span>\nprint(<span class="text-green-300">f\"Revenue: {revenue:.2f}\"</span>)</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 10<br>Revenue: 94.50</p>`
-          : currentLanguage === "Java"
-          ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>int points = <span class="text-orange-300">10</span>;\nSystem.out.println(points);\n<span class="text-cyan-300">double</span> total = <span class="text-orange-300">94.50</span>;\nSystem.out.printf(<span class="text-green-300">\"Total: %.2f\"</span>, total);</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 10<br>Total: 94.50</p>`
-          : `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-cyan-300">int</span> points = <span class="text-orange-300">10</span>;\nstd::cout &lt;&lt; points &lt;&lt; std::endl;\n<span class="text-cyan-300">double</span> total = <span class="text-orange-300">94.50</span>;\nstd::cout &lt;&lt; std::fixed &lt;&lt; std::setprecision(<span class="text-orange-300">2</span>) &lt;&lt; <span class="text-green-300">\"Total: \"</span> &lt;&lt; total;</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 10<br>Total: 94.50</p>`,
-        mini_practice_output: "50\nTotal: 125.00",
-        mini_practice_question: "Write code that assigns value and formats decimal output to 2 places.",
-        mini_practice_answer: currentLanguage === "Python" ? "points = 50\nprint(points)\ntotal = 125.00\nprint(f\"Total: {total:.2f}\")" : currentLanguage === "Java" ? "int points = 50;\nSystem.out.println(points);\ndouble total = 125.00;\nSystem.out.printf(\"Total: %.2f\", total);" : "int points = 50;\nstd::cout << points << std::endl;\ndouble total = 125.00;\nstd::cout << std::fixed << std::setprecision(2) << \"Total: \" << total;",
-        order_index: 2,
-      },
-      {
-        id: "ch3",
-        course_id: courseId,
-        title: "Control Flow",
-        description: "Use conditionals and loops to control execution",
-        explanation_html: `
-          <p>Introduction to control flow.</p>
-          <p><strong>Terms:</strong> <code>condition</code>, <code>branch</code>, <code>loop</code>, <code>iteration</code>, <code>break</code>, <code>continue</code>.</p>
-          <ul>
-            <li>Use conditionals (if/else) for branching logic</li>
-            <li>Use loops (for/while) for repeated work</li>
-            <li>Use break to exit a loop early</li>
-            <li>Use continue to skip to next iteration</li>
-          </ul>
-        `,
-        example_html:
-          currentLanguage === "Java"
-            ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-cyan-300">int</span> score = <span class="text-orange-300">75</span>;\n<span class="text-purple-300">if</span> (score &gt;= <span class="text-orange-300">60</span>) {\n  System.out.println(<span class="text-green-300">\"Pass\"</span>);\n}\n<br><span class="text-amber-300">// Loop example</span>\n<span class="text-purple-300">for</span> (<span class="text-cyan-300">int</span> i = <span class="text-orange-300">1</span>; i &lt;= <span class="text-orange-300">3</span>; i++) {\n  System.out.println(i);\n}</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> Pass<br>1<br>2<br>3</p>`
-            : currentLanguage === "C++"
-            ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-cyan-300">int</span> score = <span class="text-orange-300">75</span>;\n<span class="text-purple-300">if</span> (score &gt;= <span class="text-orange-300">60</span>) {\n  std::cout &lt;&lt; <span class="text-green-300">\"Pass\"</span> &lt;&lt; std::endl;\n}\n<br><span class="text-amber-300">// Loop example</span>\n<span class="text-purple-300">for</span> (<span class="text-cyan-300">int</span> i = <span class="text-orange-300">1</span>; i &lt;= <span class="text-orange-300">3</span>; i++) {\n  std::cout &lt;&lt; i &lt;&lt; std::endl;\n}</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> Pass<br>1<br>2<br>3</p>`
-            : `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>score = <span class="text-orange-300">75</span>\n<span class="text-purple-300">if</span> score &gt;= <span class="text-orange-300">60</span>:\n    print(<span class="text-green-300">\"Pass\"</span>)\n<br><span class="text-amber-300"># Loop example</span>\n<span class="text-purple-300">for</span> i <span class="text-purple-300">in</span> range(<span class="text-orange-300">1</span>, <span class="text-orange-300">4</span>):\n    print(i)</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> Pass<br>1<br>2<br>3</p>`,
-        mini_practice_example_html: currentLanguage === "Python"
-          ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>n = <span class="text-orange-300">5</span>\n<span class="text-purple-300">if</span> n &gt; <span class="text-orange-300">0</span>:\n    print(<span class="text-green-300">\"Positive\"</span>)\n<span class="text-purple-300">for</span> i <span class="text-purple-300">in</span> range(n):\n    print(i)</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> Positive<br>0<br>1<br>2<br>3<br>4</p>`
-          : currentLanguage === "Java"
-          ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-cyan-300">int</span> n = <span class="text-orange-300">5</span>;\n<span class="text-purple-300">if</span> (n &gt; <span class="text-orange-300">0</span>) {\n  System.out.println(<span class="text-green-300">\"Positive\"</span>);\n}\n<span class="text-purple-300">for</span> (<span class="text-cyan-300">int</span> i = <span class="text-orange-300">0</span>; i &lt; n; i++) {\n  System.out.println(i);\n}</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> Positive<br>0<br>1<br>2<br>3<br>4</p>`
-          : `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-cyan-300">int</span> n = <span class="text-orange-300">5</span>;\n<span class="text-purple-300">if</span> (n &gt; <span class="text-orange-300">0</span>) {\n  std::cout &lt;&lt; <span class="text-green-300">\"Positive\"</span> &lt;&lt; std::endl;\n}\n<span class="text-purple-300">for</span> (<span class="text-cyan-300">int</span> i = <span class="text-orange-300">0</span>; i &lt; n; i++) {\n  std::cout &lt;&lt; i &lt;&lt; std::endl;\n}</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> Positive<br>0<br>1<br>2<br>3<br>4</p>`,
-        mini_practice_output: "Small\n1\n2",
-        mini_practice_question: "Write code using condition and loop logic that produces exactly the target output.",
-        mini_practice_answer: currentLanguage === "Python" ? "n = 5\nif n < 10:\n    print(\"Small\")\nfor i in range(1, 3):\n    print(i)" : currentLanguage === "Java" ? "int n = 5;\nif (n < 10) {\n  System.out.println(\"Small\");\n}\nfor (int i = 1; i < 3; i++) {\n  System.out.println(i);\n}" : "int n = 5;\nif (n < 10) {\n  std::cout << \"Small\" << std::endl;\n}\nfor (int i = 1; i < 3; i++) {\n  std::cout << i << std::endl;\n}",
-        order_index: 3,
-      },
-      {
-        id: "ch4",
-        course_id: courseId,
-        title: "Functions",
-        description: "Build reusable logic with clear inputs and outputs",
-        explanation_html: `
-          <p>Introduction to functions and reusable code blocks.</p>
-          <p><strong>Terms:</strong> <code>function</code>, <code>parameter</code>, <code>argument</code>, <code>return</code>.</p>
-          <ul>
-            <li>Write focused functions that do one job</li>
-            <li>Use parameters for dynamic behavior</li>
-            <li>Return values for reuse in other logic</li>
-          </ul>
-        `,
-        example_html:
-          currentLanguage === "Java"
-            ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-cyan-300">public static int</span> add(<span class="text-cyan-300">int</span> a, <span class="text-cyan-300">int</span> b) {\n  <span class="text-purple-300">return</span> a + b;\n}\nSystem.out.println(add(<span class="text-orange-300">2</span>, <span class="text-orange-300">3</span>));</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 5</p>`
-            : currentLanguage === "C++"
-            ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-cyan-300">int</span> add(<span class="text-cyan-300">int</span> a, <span class="text-cyan-300">int</span> b) {\n  <span class="text-purple-300">return</span> a + b;\n}\nstd::cout &lt;&lt; add(<span class="text-orange-300">2</span>, <span class="text-orange-300">3</span>) &lt;&lt; std::endl;</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 5</p>`
-            : `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-purple-300">def</span> add(a, b):\n    <span class="text-purple-300">return</span> a + b\nprint(add(<span class="text-orange-300">2</span>, <span class="text-orange-300">3</span>))</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 5</p>`,
-        mini_practice_example_html: currentLanguage === "Python"
-          ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>def greet(name):\n    return \"Hi \" + name\nprint(greet(\"Ana\"))</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> Hi Ana</p>`
-          : currentLanguage === "Java"
-          ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>static int square(int n) { return n*n; }\nSystem.out.println(square(4));</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 16</p>`
-          : `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>int square(int n) { return n*n; }\nstd::cout &lt;&lt; square(4) &lt;&lt; std::endl;</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 16</p>`,
-        mini_practice_output: "8",
-        mini_practice_question: "Write function-based code that produces exactly the target output.",
-        mini_practice_answer: currentLanguage === "Python" ? "def double(x):\n    return x*2\nprint(double(4))" : currentLanguage === "Java" ? "static int doubleNum(int x){ return x*2; }\nSystem.out.println(doubleNum(4));" : "int doubleNum(int x){ return x*2; }\nstd::cout << doubleNum(4) << std::endl;",
-        order_index: 4,
-      },
-      {
-        id: "ch5",
-        course_id: courseId,
-        title: "Data Structures",
-        description: "Choose the right structure for storing and retrieving data",
-        explanation_html: `
-          <p>Introduction to common data structures.</p>
-          <p><strong>Terms:</strong> <code>array/list</code>, <code>map/dictionary</code>, <code>set</code>, <code>key-value</code>.</p>
-          <ul>
-            <li>Lists/arrays for ordered items</li>
-            <li>Maps/dictionaries for key-value lookup</li>
-            <li>Sets for unique values</li>
-          </ul>
-        `,
-        example_html:
-          currentLanguage === "Java"
-            ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-cyan-300">HashMap&lt;String, Integer&gt;</span> scores = <span class="text-purple-300">new</span> HashMap&lt;&gt;();\nscores.put(<span class="text-green-300">\"Ana\"</span>, <span class="text-orange-300">90</span>);\nSystem.out.println(scores.get(<span class="text-green-300">\"Ana\"</span>));</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 90</p>`
-            : currentLanguage === "C++"
-            ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code><span class="text-cyan-300">map&lt;string, int&gt;</span> scores;\nscores[<span class="text-green-300">\"Ana\"</span>] = <span class="text-orange-300">90</span>;\nstd::cout &lt;&lt; scores[<span class="text-green-300">\"Ana\"</span>] &lt;&lt; std::endl;</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 90</p>`
-            : `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>scores = {<span class="text-green-300">\"Ana\"</span>: <span class="text-orange-300">90</span>}\nprint(scores[<span class="text-green-300">\"Ana\"</span>])</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 90</p>`,
-        mini_practice_example_html: currentLanguage === "Python"
-          ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>data = {<span class="text-green-300">\"x\"</span>: <span class="text-orange-300">1</span>}\nprint(data[<span class="text-green-300">\"x\"</span>])</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 1</p>`
-          : currentLanguage === "Java"
-          ? `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>HashMap&lt;String,Integer&gt; m = new HashMap&lt;&gt;();\nm.put(\"x\", 1);\nSystem.out.println(m.get(\"x\"));</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 1</p>`
-          : `<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>map&lt;string,int&gt; m;\nm[\"x\"] = 1;\nstd::cout &lt;&lt; m[\"x\"] &lt;&lt; std::endl;</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 1</p>`,
-        mini_practice_output: "100",
-        mini_practice_question: "Write data-structure code that produces exactly the target output.",
-        mini_practice_answer: currentLanguage === "Python" ? "scores = {\"A\": 100}\nprint(scores[\"A\"])" : currentLanguage === "Java" ? "HashMap<String,Integer> scores = new HashMap<>();\nscores.put(\"A\",100);\nSystem.out.println(scores.get(\"A\"));" : "map<string,int> scores;\nscores[\"A\"] = 100;\nstd::cout << scores[\"A\"] << std::endl;",
-        order_index: 5,
-      },
-    ]
-    setChapters(mockChapters)
+    const nextChapters = catalog?.chapters.filter((chapter) => chapter.course_id === courseId).sort((a, b) => a.order_index - b.order_index) ?? []
+    setChapters(nextChapters)
 
     if (user?.id && languageId) {
       const completed = await getCompletedChaptersForCourse(user.id, languageId, courseId)
       const nextProgress = new Map<string, boolean>()
-      mockChapters.forEach((chapter) => {
+      nextChapters.forEach((chapter) => {
         nextProgress.set(chapter.id, completed.has(chapter.id))
       })
       setProgress(nextProgress)
@@ -418,6 +262,39 @@ export default function LearningPage() {
       .replace(/\s+/g, " ")
 
   const normalizeOutput = (value: string) => normalizeAnswer(value.replace(/\r\n/g, "\n"))
+
+  const formatLessonOverviewHtml = (html: string) => {
+    const keyTermsPattern = /<p>\s*<strong>\s*Key terms:\s*<\/strong>\s*([\s\S]*?)<\/p>/i
+    const match = html.match(keyTermsPattern)
+    if (!match) return html
+
+    const keyTermsText = match[1]
+    const terms: Array<{ term: string; description: string }> = []
+    const termPattern = /<code>(.*?)<\/code>\s*(?:\((.*?)\))?/g
+
+    for (const item of keyTermsText.matchAll(termPattern)) {
+      const term = item[1]?.trim() ?? ""
+      const description = item[2]?.trim() ?? ""
+      if (term) {
+        terms.push({ term, description })
+      }
+    }
+
+    if (terms.length === 0) return html
+
+    const termsListHtml = [
+      "<p><strong>Key terms:</strong></p>",
+      "<ul>",
+      ...terms.map(({ term, description }) =>
+        description
+          ? `<li><code>${term}</code> - ${description}</li>`
+          : `<li><code>${term}</code></li>`
+      ),
+      "</ul>",
+    ].join("")
+
+    return html.replace(keyTermsPattern, termsListHtml)
+  }
 
   const submitMiniPractice = async () => {
     if (!selectedChapter || !selectedLanguage) return
@@ -577,8 +454,11 @@ export default function LearningPage() {
 
               <CardContent className="space-y-8">
                 <section className="rounded-lg border border-slate-200 bg-slate-50 p-5">
-                  <h4 className="text-lg font-semibold text-slate-900 mb-3">Introduction & Terms</h4>
-                  <div className="prose prose-blue max-w-none" dangerouslySetInnerHTML={{ __html: selectedChapter.explanation_html }} />
+                  <h4 className="text-lg font-semibold text-slate-900 mb-3">Lesson Overview</h4>
+                  <div
+                    className="prose prose-blue max-w-none [&_p+p]:mt-4 [&_ul]:mb-5 [&_ul+p]:mt-5"
+                    dangerouslySetInnerHTML={{ __html: formatLessonOverviewHtml(selectedChapter.explanation_html) }}
+                  />
                 </section>
 
                 <section className="rounded-lg border border-slate-200 bg-white p-5">

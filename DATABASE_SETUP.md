@@ -6,6 +6,9 @@ The Challenge system requires the following Supabase tables to be created:
 
 1. **challenge_level_progress** - Tracks completed challenge levels per user per language
 2. **learning_chapter_progress** - Tracks completed learning chapters per user
+3. **learning_languages** - Stores language cards for the Learning page
+4. **learning_courses** - Stores courses for each language
+5. **learning_chapters** - Stores chapter content, examples, and practice prompts
 
 ## Setup Steps
 
@@ -17,6 +20,8 @@ The Challenge system requires the following Supabase tables to be created:
 4. Copy the contents of `SUPABASE_SCHEMA.sql`
 5. Paste it into the SQL editor
 6. Click "Run"
+
+7. Run `SUPABASE_LEARNING_CONTENT.sql` in a second query to create and seed the learning catalog
 
 ### Option 2: Manual Table Creation
 
@@ -54,6 +59,9 @@ After tables are created, ensure RLS is enabled:
 1. Go to Supabase Dashboard > Authentication > Policies
 2. Enable RLS for `challenge_level_progress`
 3. Enable RLS for `learning_chapter_progress`
+4. The learning catalog tables can remain public read-only, since the content is not user-specific
+
+Note: `SUPABASE_SERVICE_ROLE_KEY` is not required for the Learning page. The app can read the catalog with `NEXT_PUBLIC_SUPABASE_ANON_KEY` as long as the learning catalog tables are readable.
 
 The policies are already defined in the SQL schema file.
 
