@@ -24,8 +24,8 @@ export default function HomePage() {
           <div className="space-x-4 flex items-center ml-auto">
             {isLoggedIn ? (
               <>
-                <Link href="/dashboard">
-                  <Button variant="outline" className="transition-transform hover:scale-105 active:scale-110">Dashboard</Button>
+                <Link href="/profile">
+                  <Button variant="outline" className="transition-transform hover:scale-105 active:scale-110">Profile</Button>
                 </Link>
                 <Button
                   variant="outline"

@@ -67,6 +67,7 @@ export default function SignInPage() {
           email: result.profile?.email,
           username: result.profile?.username,
           id: result.user?.id,
+          avatar_url: result.profile?.avatar_url ?? null,
         })
       )
 
@@ -110,7 +111,7 @@ export default function SignInPage() {
             <CardHeader className="px-8 pt-8">
               <CardTitle className="text-2xl">Sign In</CardTitle>
               <CardDescription className="mt-1 text-sm text-muted-foreground">
-                Use your username or email to access your dashboard
+                Use your username or email to access your profile
               </CardDescription>
             </CardHeader>
 

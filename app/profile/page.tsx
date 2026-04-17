@@ -65,11 +65,37 @@ export default function ProfilePage() {
     setUser(parsedUser)
 
     if (parsedUser?.id) {
+      void hydrateUser(parsedUser.id)
       void loadProfileProgress(parsedUser.id)
       void loadJoinedDate(parsedUser.id)
       loadCertificates(parsedUser.id)
     }
   }, [router])
+
+  const hydrateUser = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, email, username, avatar_url")
+        .eq("id", userId)
+        .maybeSingle()
+
+      if (error || !data) {
+        return
+      }
+
+      setUser((previous: any) => {
+        const mergedUser = {
+          ...previous,
+          ...data,
+        }
+        sessionStorage.setItem("user", JSON.stringify(mergedUser))
+        return mergedUser
+      })
+    } catch {
+      // Keep cached session user when profile refresh fails.
+    }
+  }
 
   const readImageAsDataUrl = (file: File) =>
     new Promise<string>((resolve, reject) => {
