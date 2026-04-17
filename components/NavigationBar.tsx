@@ -4,12 +4,14 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Trophy, BookOpen, Award, User, LogOut } from "lucide-react"
+import { signOut } from "@/lib/auth"
 
 export default function NavigationBar() {
   const pathname = usePathname()
   const router = useRouter()
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    await signOut()
     sessionStorage.removeItem("user")
     router.push("/")
   }

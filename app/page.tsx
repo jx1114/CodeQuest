@@ -5,9 +5,16 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowRight, BookOpen, Zap, Trophy, Award } from "lucide-react"
+import { signOut } from "@/lib/auth"
 
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  const handleSignOut = async () => {
+    await signOut()
+    sessionStorage.removeItem("user")
+    setIsLoggedIn(false)
+  }
 
   useEffect(() => {
     // Check if user is logged in
@@ -30,10 +37,7 @@ export default function HomePage() {
                 <Button
                   variant="outline"
                   className="transition-transform hover:scale-105 active:scale-110"
-                  onClick={() => {
-                    sessionStorage.removeItem("user")
-                    setIsLoggedIn(false)
-                  }}
+                  onClick={() => void handleSignOut()}
                 >
                   Sign Out
                 </Button>
