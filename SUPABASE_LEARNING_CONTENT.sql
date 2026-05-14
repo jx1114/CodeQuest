@@ -70,14 +70,14 @@ INSERT INTO learning_chapters (
     'Introduction & Setup',
     'Understand Python basics and how to run your first program',
     $$<p>Welcome to your first Python lesson. Before writing larger programs, you need to understand how Python runs code and why small details in syntax matter.</p><p><strong>Key terms:</strong> <code>interpreter</code> (runs Python code line by line), <code>syntax</code> (the grammar rules of the language), <code>runtime</code> (the environment where code executes), and <code>output</code> (the result shown after your code runs).</p><p>When beginners make mistakes, it is usually because of syntax or misunderstanding how execution flows. In the example below, focus on the exact print statement and the output it produces. That pattern will be used in every chapter.</p>$$,
-    $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>print("Hello, World!")</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> Hello, World!</p>$$,
+      $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>#include &lt;iostream&gt;
     $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>print("Welcome")</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> Welcome</p>$$,
     'CodeQuest',
     'Write code that produces exactly the target output.',
     'print("CodeQuest")',
     1
   ),
-  (
+      $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>#include &lt;iostream&gt;
     'python-ch2',
     'c1',
     'Variables & Data Types',
@@ -250,14 +250,14 @@ System.out.println(m.get("x"));</code></pre><p class="mt-2 text-sm text-slate-70
     'Introduction & Setup',
     'Understand C++ basics and how to run your first program',
     $$<p>Welcome to C++ basics. C++ is powerful, but beginners need a clear mental model of program structure before writing larger solutions.</p><p><strong>Key terms:</strong> <code>compiler</code> (translates source code to executable code), <code>syntax</code> (language grammar rules), <code>main</code> (entry point of the program), and <code>output</code> (text produced by execution).</p><p>In the example below, notice the full structure: include directives, <code>main</code> function, output statement, and return value. This structure will appear repeatedly in your C++ practice.</p>$$,
-    $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>#include <iostream>
+    $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>#include &lt;iostream&gt;
 using namespace std;
 
 int main() {
   cout << "Hello, World!" << endl;
   return 0;
 }</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> Hello, World!</p>$$,
-    $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>#include <iostream>
+    $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>#include &lt;iostream&gt;
 using namespace std;
 
 int main() {
@@ -266,7 +266,7 @@ int main() {
 }</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> Welcome</p>$$,
     'CodeQuest',
     'Write code that produces exactly the target output.',
-    '#include <iostream>\nusing namespace std;\n\nint main() {\n  cout << "CodeQuest" << endl;\n  return 0;\n}',
+    '#include &lt;iostream&gt;\nusing namespace std;\n\nint main() {\n  cout << "CodeQuest" << endl;\n  return 0;\n}',
     1
   ),
   (
@@ -276,16 +276,16 @@ int main() {
     'Store, update, and convert values safely',
     $$<p>Variables are the foundation of any C++ program. You declare a type, store a value, and then use it in calculations or output.</p><p><strong>Key terms:</strong> <code>variable</code> (named storage), <code>data type</code> (such as <code>int</code> or <code>double</code>), <code>assignment</code> (placing a value into a variable), and <code>literal</code> (hard-coded value in source code).</p><p>This chapter also introduces formatted numeric output. In the example, watch how the same value can be displayed in a clean, user-friendly format using fixed precision.</p>$$,
     $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>int age = 21;
-double price = 94.50;
-cout << age << endl;
-cout << fixed << setprecision(2) << "Price: " << price << endl;</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 21<br>Price: 94.50</p>$$,
+  double price = 94.50;
+  cout << age << endl;
+  cout << fixed << setprecision(2) << "Price: " << price << endl;</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 21<br>Price: 94.50</p>$$,
     $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>int points = 10;
-cout << points << endl;
-double total = 94.50;
-cout << fixed << setprecision(2) << "Total: " << total << endl;</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 10<br>Total: 94.50</p>$$,
+  cout << points << endl;
+  double total = 94.50;
+  cout << fixed << setprecision(2) << "Total: " << total << endl;</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 10<br>Total: 94.50</p>$$,
     '50\nTotal: 125.00',
     'Write code that assigns value and formats decimal output to 2 places.',
-    '#include <iostream>\n#include <iomanip>\nusing namespace std;\n\nint main() {\n  int points = 50;\n  cout << points << endl;\n  double total = 125.00;\n  cout << fixed << setprecision(2) << "Total: " << total;\n  return 0;\n}',
+    '#include &lt;iostream&gt;\n#include &lt;iomanip&gt;\nusing namespace std;\n\nint main() {\n  int points = 50;\n  cout << points << endl;\n  double total = 125.00;\n  cout << fixed << setprecision(2) << "Total: " << total;\n  return 0;\n}',
     2
   ),
   (
@@ -310,7 +310,7 @@ for (int i = 0; i < n; i++) {
 }</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> Positive<br>0<br>1<br>2<br>3<br>4</p>$$,
     'Small\n1\n2',
     'Write code using condition and loop logic that produces exactly the target output.',
-    '#include <iostream>\nusing namespace std;\n\nint main() {\n  int n = 5;\n  if (n < 10) {\n    cout << "Small" << endl;\n  }\n  for (int i = 1; i < 3; i++) {\n    cout << i << endl;\n  }\n  return 0;\n}',
+    '#include &lt;iostream&gt;\nusing namespace std;\n\nint main() {\n  int n = 5;\n  if (n &lt; 10) {\n    cout << "Small" << endl;\n  }\n  for (int i = 1; i &lt; 3; i++) {\n    cout << i << endl;\n  }\n  return 0;\n}',
     3
   ),
   (
@@ -327,7 +327,7 @@ cout << add(2, 3) << endl;</code></pre><p class="mt-3 text-sm text-slate-700"><s
 cout << square(4) << endl;</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 16</p>$$,
     '8',
     'Write function-based code that produces exactly the target output.',
-    '#include <iostream>\nusing namespace std;\n\nint doubleNum(int x){ return x*2; }\n\nint main() {\n  cout << doubleNum(4) << endl;\n  return 0;\n}',
+    '#include &lt;iostream&gt;\nusing namespace std;\n\nint doubleNum(int x){ return x*2; }\n\nint main() {\n  cout << doubleNum(4) << endl;\n  return 0;\n}',
     4
   ),
   (
@@ -336,15 +336,15 @@ cout << square(4) << endl;</code></pre><p class="mt-2 text-sm text-slate-700"><s
     'Data Structures',
     'Choose the right structure for storing and retrieving data',
     $$<p>Data structures are how C++ programs manage collections of information. The right structure makes code both cleaner and more efficient.</p><p><strong>Key terms:</strong> <code>array</code> (fixed-size ordered values), <code>map</code> (key-to-value storage), <code>set</code> (unique values), and <code>key-value</code> (identifier paired with data).</p><p>This chapter focuses on map lookups. In the example, notice how a value is stored under a key and retrieved using that same key, a pattern used heavily in real applications.</p>$$,
-    $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>map<string, int> scores;
+    $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>map&lt;string, int&gt; scores;
 scores["Ana"] = 90;
 cout << scores["Ana"] << endl;</code></pre><p class="mt-3 text-sm text-slate-700"><strong>Output:</strong> 90</p>$$,
-    $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>map<string,int> m;
+    $$<pre class="rounded-lg bg-slate-900 p-4 text-slate-100 overflow-x-auto"><code>map&lt;string,int&gt; m;
 m["x"] = 1;
 cout << m["x"] << endl;</code></pre><p class="mt-2 text-sm text-slate-700"><strong>Output:</strong> 1</p>$$,
     '100',
     'Write data-structure code that produces exactly the target output.',
-    '#include <iostream>\n#include <map>\nusing namespace std;\n\nint main() {\n  map<string,int> scores;\n  scores["A"] = 100;\n  cout << scores["A"] << endl;\n  return 0;\n}',
+    '#include &lt;iostream&gt;\n#include &lt;map&gt;\nusing namespace std;\n\nint main() {\n  map&lt;string,int&gt; scores;\n  scores["A"] = 100;\n  cout << scores["A"] << endl;\n  return 0;\n}',
     5
   )
 ON CONFLICT (id) DO UPDATE SET

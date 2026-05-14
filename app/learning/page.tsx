@@ -76,7 +76,6 @@ export default function LearningPage() {
   const [generatedCertificates, setGeneratedCertificates] = useState<Map<string, Certificate>>(new Map())
   const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null)
   const [showCertificateModal, setShowCertificateModal] = useState(false)
-  const [showCertificateReady, setShowCertificateReady] = useState(false)
   const certificateRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -166,7 +165,8 @@ export default function LearningPage() {
         return next
       })
 
-      setShowCertificateReady(true)
+      setSelectedCertificate(newCertificate)
+      setShowCertificateModal(true)
     }
   }, [progress, chapters, selectedLanguage, generatedCertificates, user])
 
@@ -299,6 +299,14 @@ export default function LearningPage() {
 
     return html.replace(keyTermsPattern, termsListHtml)
   }
+
+  const sanitizeCodeBlocksHtml = (html: string) =>
+    html.replace(/<code>([\s\S]*?)<\/code>/g, (_, codeContent: string) => {
+      const escaped = codeContent
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+      return `<code>${escaped}</code>`
+    })
 
   const submitMiniPractice = async () => {
     if (!selectedChapter || !selectedLanguage) return
@@ -479,7 +487,10 @@ export default function LearningPage() {
 
                 <section className="rounded-lg border border-slate-200 bg-white p-5">
                   <h4 className="text-lg font-semibold text-slate-900 mb-3">Example</h4>
-                  <div className="max-w-none" dangerouslySetInnerHTML={{ __html: selectedChapter.example_html }} />
+                  <div
+                    className="max-w-none"
+                    dangerouslySetInnerHTML={{ __html: sanitizeCodeBlocksHtml(selectedChapter.example_html) }}
+                  />
                 </section>
 
                 <section className="rounded-lg border border-slate-200 bg-slate-50 p-5">
@@ -591,26 +602,6 @@ export default function LearningPage() {
                 </div>
               )}
 
-              {showCertificateReady && completionPercentage === 100 && (
-                <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <p className="text-blue-800 font-medium">Nice work! Your certificate is ready.</p>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={openCertificate}
-                      className="bg-blue-600 text-white hover:bg-blue-700"
-                    >
-                      View Now
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowCertificateReady(false)}
-                      className="bg-white"
-                    >
-                      Dismiss
-                    </Button>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -692,6 +683,7 @@ export default function LearningPage() {
           </Card>
         </div>
       )}
+
     </>
   )
 }
