@@ -1,13 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useRef, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import NavigationBar from "@/components/NavigationBar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { ChevronLeft, CheckCircle, Circle, Code, BookOpen, Award } from "lucide-react"
+import { ChevronLeft, CheckCircle, Circle, Code, BookOpen, Award, Download } from "lucide-react"
 import { getCompletedChaptersForCourse, markLearningChapterComplete } from "@/lib/progress"
+import CertificateArtwork from "@/components/CertificateArtwork"
+import { downloadCertificateSvg, getCertificateFilename } from "@/lib/certificate"
 
 interface Language {
   id: string
@@ -75,6 +77,7 @@ export default function LearningPage() {
   const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null)
   const [showCertificateModal, setShowCertificateModal] = useState(false)
   const [showCertificateReady, setShowCertificateReady] = useState(false)
+  const certificateRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const userData = sessionStorage.getItem("user")
@@ -363,6 +366,18 @@ export default function LearningPage() {
     setShowCertificateModal(true)
   }
 
+  const handleDownloadCertificate = () => {
+    if (!selectedCertificate) return
+
+    const svgElement = certificateRef.current?.querySelector("svg") as SVGSVGElement | null
+    if (!svgElement) return
+
+    downloadCertificateSvg(
+      svgElement,
+      getCertificateFilename(selectedCertificate.userName, selectedCertificate.languageName)
+    )
+  }
+
   if (loading) {
     return (
       <>
@@ -644,32 +659,33 @@ export default function LearningPage() {
       </div>
 
       {showCertificateModal && selectedCertificate && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl bg-white border-0 shadow-2xl">
-            <CardContent className="p-8">
-              <div className="rounded-xl border-4 border-amber-200 bg-linear-to-br from-amber-50 to-white p-8 text-center">
-                <Award className="w-14 h-14 text-amber-500 mx-auto mb-4" />
-                <p className="text-sm uppercase tracking-[0.25em] text-slate-500 mb-2">Certificate of Completion</p>
-                <h3 className="text-3xl font-bold text-slate-900 mb-6">CodeQuest Achievement</h3>
-
-                <p className="text-slate-600 mb-2">This certifies that</p>
-                <p className="text-2xl font-bold text-slate-900 mb-5">{selectedCertificate.userName}</p>
-
-                <p className="text-slate-600 mb-2">has successfully completed all {selectedCertificate.totalChapters} chapters in</p>
-                <p className="text-xl font-semibold text-blue-700 mb-6">{selectedCertificate.languageName}</p>
-
-                <div className="text-sm text-slate-500 space-y-1">
-                  <p>Certificate ID: {selectedCertificate.id}</p>
-                  <p>Issued on: {new Date(selectedCertificate.issuedAt).toLocaleDateString()}</p>
-                </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-md">
+          <Card className="w-full max-w-4xl overflow-hidden border-0 bg-[#0f172a]/90 shadow-2xl shadow-slate-950/50">
+            <CardContent className="flex flex-col gap-4 p-4 sm:p-5 lg:p-6">
+              <div ref={certificateRef} className="mx-auto w-full max-w-3xl">
+                <CertificateArtwork
+                  userName={selectedCertificate.userName}
+                  languageName={selectedCertificate.languageName}
+                  totalChapters={selectedCertificate.totalChapters}
+                  certificateId={selectedCertificate.id}
+                  issuedAt={selectedCertificate.issuedAt}
+                  className="shadow-[0_18px_50px_rgba(67,44,18,0.18)]"
+                />
               </div>
 
-              <div className="mt-6 flex justify-end gap-3">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button
                   onClick={() => setShowCertificateModal(false)}
-                  className="bg-gray-100 text-black hover:bg-gray-200 border border-gray-300 shadow-md hover:shadow-lg active:translate-y-px active:shadow-sm transition-all"
+                  className="border border-white/15 bg-white/10 text-white hover:bg-white/15"
                 >
                   Close
+                </Button>
+                <Button
+                  onClick={handleDownloadCertificate}
+                  className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Certificate
                 </Button>
               </div>
             </CardContent>

@@ -1,14 +1,16 @@
 "use client"
 
-import { useState, useEffect, type ChangeEvent } from "react"
+import { useRef, useState, useEffect, type ChangeEvent } from "react"
 import { useRouter } from "next/navigation"
 import NavigationBar from "@/components/NavigationBar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
-import { Trophy, Flame, Award, Mail, Calendar, Edit, Target, Code } from "lucide-react"
+import { Trophy, Flame, Award, Mail, Calendar, Edit, Target, Code, Download, AlertCircle } from "lucide-react"
 import { getProfileProgressSnapshot, type ProfileProgressSnapshot } from "@/lib/progress"
 import { supabase } from "@/lib/supabase"
+import CertificateArtwork from "@/components/CertificateArtwork"
+import { downloadCertificateSvg, getCertificateFilename } from "@/lib/certificate"
 
 interface CourseStats {
   completed: number
@@ -42,9 +44,11 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [avatarError, setAvatarError] = useState("")
+  const avatarErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [certificates, setCertificates] = useState<Map<string, GeneratedCertificate>>(new Map())
   const [selectedCertificate, setSelectedCertificate] = useState<GeneratedCertificate | null>(null)
   const [showCertificateModal, setShowCertificateModal] = useState(false)
+  const certificateRef = useRef<HTMLDivElement | null>(null)
   const [joinedDateLabel, setJoinedDateLabel] = useState("Joined date unavailable")
   const [userProgress, setUserProgress] = useState<UserProgressType>({
     python: { completed: 0, total: 10, learningCompleted: 0, learningTotal: 5, challengeCompleted: 0, challengeTotal: 5, xp: 0 },
@@ -138,6 +142,26 @@ export default function ProfilePage() {
       image.src = inputDataUrl
     })
 
+  const clearAvatarErrorTimer = () => {
+    if (avatarErrorTimerRef.current) {
+      clearTimeout(avatarErrorTimerRef.current)
+      avatarErrorTimerRef.current = null
+    }
+  }
+
+  const showAvatarError = (message: string) => {
+    clearAvatarErrorTimer()
+    setAvatarError(message)
+    avatarErrorTimerRef.current = setTimeout(() => {
+      setAvatarError("")
+      avatarErrorTimerRef.current = null
+    }, 3000)
+  }
+
+  useEffect(() => {
+    return () => clearAvatarErrorTimer()
+  }, [])
+
   const handleAvatarFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0]
     event.target.value = ""
@@ -147,11 +171,12 @@ export default function ProfilePage() {
     }
 
     if (!selectedFile.type.startsWith("image/")) {
-      setAvatarError("Please choose an image file.")
+      showAvatarError("Please choose a PNG, JPG, or WebP image.")
       return
     }
 
     setIsUploadingAvatar(true)
+    clearAvatarErrorTimer()
     setAvatarError("")
 
     try {
@@ -172,7 +197,7 @@ export default function ProfilePage() {
       sessionStorage.setItem("user", JSON.stringify(nextUser))
     } catch (error) {
       console.error("Failed to upload avatar", error)
-      setAvatarError("Failed to upload photo. Please try again.")
+      showAvatarError("Upload failed. Please try again.")
     } finally {
       setIsUploadingAvatar(false)
     }
@@ -239,6 +264,18 @@ export default function ProfilePage() {
     if (!certificate) return
     setSelectedCertificate(certificate)
     setShowCertificateModal(true)
+  }
+
+  const handleDownloadCertificate = () => {
+    if (!selectedCertificate) return
+
+    const svgElement = certificateRef.current?.querySelector("svg") as SVGSVGElement | null
+    if (!svgElement) return
+
+    downloadCertificateSvg(
+      svgElement,
+      getCertificateFilename(selectedCertificate.userName, selectedCertificate.languageName)
+    )
   }
 
   const languages = [
@@ -326,7 +363,15 @@ export default function ProfilePage() {
                     disabled={isUploadingAvatar}
                   />
                   {isUploadingAvatar && <p className="text-xs text-slate-500 mt-2 text-center">Uploading...</p>}
-                  {avatarError && <p className="text-xs text-red-600 mt-2 text-center">{avatarError}</p>}
+                  {avatarError && (
+                    <div className="absolute left-1/2 top-full z-20 mt-2 w-72 -translate-x-1/2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-left shadow-lg">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Invalid file</p>
+                        <p className="text-sm text-rose-700">{avatarError}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* User Info */}
@@ -376,42 +421,7 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Languages Progress */}
             <div className="lg:col-span-2 space-y-6">
-              <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                <Target className="w-6 h-6 text-blue-600" />
-                Level Progress
-              </h2>
-
-              {languages.map((lang) => {
-                const progress = userProgress[lang.key]
-                const levelPercentage = progress.challengeTotal > 0 ? (progress.challengeCompleted / progress.challengeTotal) * 100 : 0
-
-                return (
-                  <Card key={`level-progress-${lang.name}`} className="overflow-hidden bg-white shadow-sm border-0 hover:shadow-md transition-shadow">
-                    <div className={`h-2 ${lang.color}`} />
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <img src={lang.icon} alt={lang.name} className="w-16 h-16 object-contain" />
-                          <div>
-                            <h3 className="text-xl font-bold text-slate-900">{lang.name}</h3>
-                            <p className="text-sm text-slate-500">
-                              {progress.challengeCompleted} of {progress.challengeTotal} levels completed
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Progress value={levelPercentage} className="h-2" />
-                        <div className="flex justify-between text-xs text-slate-500">
-                          <span>{Math.round(levelPercentage)}% complete</span>
-                          <span>{progress.challengeTotal - progress.challengeCompleted} levels remaining</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
+              {/* Level Progress removed per request */}
 
               <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                 <Code className="w-6 h-6 text-blue-600" />
@@ -554,32 +564,30 @@ export default function ProfilePage() {
       </div>
 
       {showCertificateModal && selectedCertificate && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-2xl bg-white border-0 shadow-2xl">
-            <CardContent className="p-8">
-              <div className="rounded-xl border-4 border-amber-200 bg-linear-to-br from-amber-50 to-white p-8 text-center">
-                <Award className="w-14 h-14 text-amber-500 mx-auto mb-4" />
-                <p className="text-sm uppercase tracking-[0.25em] text-slate-500 mb-2">Certificate of Completion</p>
-                <h3 className="text-3xl font-bold text-slate-900 mb-6">CodeQuest Achievement</h3>
-
-                <p className="text-slate-600 mb-2">This certifies that</p>
-                <p className="text-2xl font-bold text-slate-900 mb-5">{selectedCertificate.userName}</p>
-
-                <p className="text-slate-600 mb-2">has successfully completed all {selectedCertificate.totalChapters} chapters in</p>
-                <p className="text-xl font-semibold text-blue-700 mb-6">{selectedCertificate.languageName}</p>
-
-                <div className="text-sm text-slate-500 space-y-1">
-                  <p>Certificate ID: {selectedCertificate.id}</p>
-                  <p>Issued on: {new Date(selectedCertificate.issuedAt).toLocaleDateString()}</p>
-                </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-md">
+          <Card className="w-full max-w-4xl overflow-hidden border-0 bg-[#0f172a]/90 shadow-2xl shadow-slate-950/50">
+            <CardContent className="flex flex-col gap-4 p-4 sm:p-5 lg:p-6">
+              <div ref={certificateRef} className="mx-auto w-full max-w-3xl">
+                <CertificateArtwork
+                  userName={selectedCertificate.userName}
+                  languageName={selectedCertificate.languageName}
+                  totalChapters={selectedCertificate.totalChapters}
+                  certificateId={selectedCertificate.id}
+                  issuedAt={selectedCertificate.issuedAt}
+                  className="shadow-[0_18px_50px_rgba(67,44,18,0.18)]"
+                />
               </div>
 
-              <div className="mt-6 flex justify-end gap-3">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button
                   onClick={() => setShowCertificateModal(false)}
-                  className="bg-gray-100 text-black hover:bg-gray-200 border border-gray-300 shadow-md hover:shadow-lg active:translate-y-px active:shadow-sm transition-all"
+                  className="border border-white/15 bg-white/10 text-white hover:bg-white/15"
                 >
                   Close
+                </Button>
+                <Button onClick={handleDownloadCertificate} className="bg-amber-500 text-slate-950 hover:bg-amber-400">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Certificate
                 </Button>
               </div>
             </CardContent>

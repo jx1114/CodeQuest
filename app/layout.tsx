@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "CodeQuest - Learn to code through challenges",
 };
 
+import AuthBootstrap from "@/components/AuthBootstrap"
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,6 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <AuthBootstrap />
         {children}
       </body>
     </html>

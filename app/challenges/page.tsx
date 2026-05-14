@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import NavigationBar from "@/components/NavigationBar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, CheckCircle, X, ChevronLeft } from "lucide-react"
+import { Trophy, CheckCircle, X, ChevronLeft, Lock } from "lucide-react"
 import AchievementUnlockModal from "@/components/AchievementUnlockModal"
 import {
   getCompletedChallengeLevels,
@@ -56,8 +56,6 @@ interface Language {
   icon: string
 }
 
-type DifficultyFilter = "all" | "easy" | "medium" | "hard"
-
 export default function ChallengesPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
@@ -73,7 +71,6 @@ export default function ChallengesPage() {
   const [testCaseResults, setTestCaseResults] = useState<ChallengeTestCaseResult[]>([])
   const [isRunning, setIsRunning] = useState(false)
   const [completedLevels, setCompletedLevels] = useState<Map<string, Set<string>>>(new Map()) // level_id -> Set<languages>
-  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all")
   const [achievementUnlocks, setAchievementUnlocks] = useState<ProfileAchievement[]>([])
   const [showAchievementUnlockModal, setShowAchievementUnlockModal] = useState(false)
 
@@ -1038,32 +1035,10 @@ export default function ChallengesPage() {
             <p className="text-slate-600">Solve challenges in any language. Each challenge can be solved up to 3 times (once per language) for up to 150 XP total.</p>
           </div>
 
-          {/* Difficulty Filter */}
-          <div className="mb-6 flex flex-wrap gap-3">
-            {(["all", "easy", "medium", "hard"] as const).map((difficulty) => (
-              <Button
-                key={difficulty}
-                onClick={() => setDifficultyFilter(difficulty)}
-                className={`${
-                  difficultyFilter === difficulty
-                    ? difficulty === "all"
-                      ? "bg-slate-700 text-white"
-                      : difficulty === "easy"
-                      ? "bg-green-600 text-white"
-                      : difficulty === "medium"
-                      ? "bg-yellow-600 text-white"
-                      : "bg-red-600 text-white"
-                    : "bg-white text-slate-900 border border-slate-300 hover:shadow-md"
-                }`}
-              >
-                {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
-              </Button>
-            ))}
-          </div>
+          {/* Difficulty filter removed per request */}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {levels
-              .filter((level) => difficultyFilter === "all" || level.difficulty === difficultyFilter)
               .map((level) => {
                 const unlocked = isLevelUnlocked(level)
                 const completedLanguages = getCompletedLanguagesForLevel(level.id)
@@ -1092,13 +1067,11 @@ export default function ChallengesPage() {
                             <Trophy className="w-6 h-6 text-slate-400" />
                           )}
                         </div>
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                          level.difficulty === "easy" ? "bg-green-100 text-green-800" :
-                          level.difficulty === "medium" ? "bg-yellow-100 text-yellow-800" :
-                          "bg-red-100 text-red-800"
-                        }`}>
-                          {level.difficulty.toUpperCase()}
-                        </span>
+                        {!unlocked && (
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 border border-slate-200">
+                            <Lock className="w-5 h-5 text-slate-500" />
+                          </div>
+                        )}
                       </div>
                       <h3 className="text-lg font-semibold text-slate-900 mb-1">Level {level.level_number}</h3>
                       <p className="text-sm text-slate-600 mb-4">{level.title}</p>
@@ -1118,12 +1091,12 @@ export default function ChallengesPage() {
                                 }
                               }}
                               disabled={!unlocked}
-                              className={`text-xs py-1 px-3 h-auto ${
+                              className={`border-0 text-xs py-1 px-3 h-auto ${
                                 isCompleted
-                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                  ? "bg-green-600 text-white hover:bg-green-700"
                                   : unlocked
-                                  ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
-                                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                  ? "bg-slate-200 text-black hover:bg-slate-300"
+                                  : "bg-slate-300 text-black cursor-not-allowed hover:bg-slate-300"
                               }`}
                               variant="outline"
                             >

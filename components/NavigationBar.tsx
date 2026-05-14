@@ -12,7 +12,16 @@ export default function NavigationBar() {
 
   const handleSignOut = async () => {
     await signOut()
-    sessionStorage.removeItem("user")
+    try {
+      sessionStorage.removeItem("user")
+    } catch (e) {
+      // ignore
+    }
+    try {
+      localStorage.removeItem("user")
+    } catch (e) {
+      // ignore
+    }
     router.push("/")
   }
 

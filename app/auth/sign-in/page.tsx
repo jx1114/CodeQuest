@@ -20,7 +20,7 @@ export default function SignInPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [remember, setRemember] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [achievementUnlocks, setAchievementUnlocks] = useState<ProfileAchievement[]>([])
@@ -60,16 +60,24 @@ export default function SignInPage() {
         }
       }
 
-      // Store user info in sessionStorage
-      sessionStorage.setItem(
-        "user",
-        JSON.stringify({
+      // Store user info in sessionStorage or localStorage based on "Remember me"
+      try {
+        const userPayload = JSON.stringify({
           email: result.profile?.email,
           username: result.profile?.username,
           id: result.user?.id,
           avatar_url: result.profile?.avatar_url ?? null,
         })
-      )
+
+        // Store user info in sessionStorage
+        try {
+          sessionStorage.setItem("user", userPayload)
+        } catch (err) {
+          // ignore sessionStorage failures
+        }
+      } catch (e) {
+        // noop
+      }
 
       setIsLoading(false)
 
@@ -138,7 +146,7 @@ export default function SignInPage() {
                 <div>
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -151,11 +159,11 @@ export default function SignInPage() {
                   <label className="inline-flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={remember}
-                      onChange={(e) => setRemember(e.target.checked)}
+                      checked={showPassword}
+                      onChange={(e) => setShowPassword(e.target.checked)}
                       className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
-                    <span className="text-muted-foreground">Remember me</span>
+                    <span className="text-muted-foreground">Show password</span>
                   </label>
 
                   <Link href="/auth/forgot" className="text-primary hover:underline font-medium">
