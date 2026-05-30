@@ -17,11 +17,13 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setSuccess("")
 
     if (!username || !email || !password || !confirmPassword) {
       setError("Please fill in all fields")
@@ -53,17 +55,62 @@ export default function SignUpPage() {
       // Store user info in sessionStorage
       sessionStorage.setItem("user", JSON.stringify({ email, username, id: result.user?.id }))
 
-      // Redirect to challenges page
-      router.push("/challenges")
+      setSuccess("Account created successfully.")
+      setIsLoading(false)
     } catch (err) {
       setError("An error occurred during sign up")
       setIsLoading(false)
     }
   }
 
+  const goToSignIn = () => {
+    setSuccess("")
+    router.push("/auth/sign-in")
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#171744] px-4 py-12">
-      <div className="w-full max-w-md">
+    <>
+      {success && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-white/20 p-6 text-center animate-in fade-in zoom-in-95 duration-200">
+            <button
+              type="button"
+              onClick={() => setSuccess("")}
+              aria-label="Close success popup"
+              className="absolute right-3 top-3 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">
+              <svg className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path
+                  fillRule="evenodd"
+                  d="M16.704 5.29a1 1 0 010 1.42l-7.25 7.25a1 1 0 01-1.42 0l-3.25-3.25a1 1 0 111.42-1.42l2.54 2.54 6.54-6.54a1 1 0 011.42 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-slate-900">Success</h2>
+            <p className="mt-2 text-sm text-slate-600">{success}</p>
+            <Button
+              type="button"
+              onClick={goToSignIn}
+              className="mt-6 w-full h-11 text-base font-semibold bg-[#4b1279] text-white hover:opacity-95 transition-all"
+            >
+              Go to sign in
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-screen flex items-center justify-center bg-[#171744] px-4 py-12">
+        <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <Link href="/" className="text-2xl font-extrabold text-white tracking-tight">
             CodeQuest
@@ -172,6 +219,7 @@ export default function SignUpPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
