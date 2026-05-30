@@ -82,8 +82,7 @@ export default function SignInPage() {
       setIsLoading(false)
 
       if (!result.user?.id || unlockedAchievements.length === 0) {
-        // Redirect to challenges page
-        router.push("/challenges")
+        router.push("/profile")
       }
     } catch (err) {
       setError("An error occurred during sign in")
@@ -95,7 +94,7 @@ export default function SignInPage() {
     setIsLoading(false)
     setShowAchievementUnlockModal(false)
     setAchievementUnlocks([])
-    router.push("/challenges")
+    router.push("/profile")
   }
 
   return (
@@ -104,7 +103,7 @@ export default function SignInPage() {
         open={showAchievementUnlockModal}
         achievements={achievementUnlocks}
         onClose={continueToApp}
-        primaryActionLabel="Continue to Challenges"
+        primaryActionLabel="Go to Profile"
       />
       <div className="min-h-screen flex items-center justify-center bg-[#171744] px-4 py-12">
         <div className="w-full max-w-md">
