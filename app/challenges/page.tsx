@@ -58,6 +58,7 @@ interface Language {
 
 export default function ChallengesPage() {
   const router = useRouter()
+  const pendingAchievementStorageKey = "pendingChallengeAchievementUnlocks"
   const [user, setUser] = useState<any>(null)
   const [levels, setLevels] = useState<ChallengeLevel[]>([])
   const [selectedLevel, setSelectedLevel] = useState<ChallengeLevel | null>(null)
@@ -73,6 +74,27 @@ export default function ChallengesPage() {
   const [completedLevels, setCompletedLevels] = useState<Map<string, Set<string>>>(new Map()) // level_id -> Set<languages>
   const [achievementUnlocks, setAchievementUnlocks] = useState<ProfileAchievement[]>([])
   const [showAchievementUnlockModal, setShowAchievementUnlockModal] = useState(false)
+
+  useEffect(() => {
+    if (selectedLevel || selectedLanguage || showAchievementUnlockModal || achievementUnlocks.length > 0) {
+      return
+    }
+
+    const storedUnlocks = sessionStorage.getItem(pendingAchievementStorageKey)
+    if (!storedUnlocks) return
+
+    try {
+      const parsedUnlocks = JSON.parse(storedUnlocks) as ProfileAchievement[]
+      if (Array.isArray(parsedUnlocks) && parsedUnlocks.length > 0) {
+        setAchievementUnlocks(parsedUnlocks)
+        setShowAchievementUnlockModal(true)
+      }
+    } catch (error) {
+      console.warn("Failed to read pending achievement unlocks", error)
+    } finally {
+      sessionStorage.removeItem(pendingAchievementStorageKey)
+    }
+  }, [achievementUnlocks.length, selectedLanguage, selectedLevel, showAchievementUnlockModal])
 
   useEffect(() => {
     const userData = sessionStorage.getItem("user")
@@ -580,9 +602,10 @@ export default function ChallengesPage() {
 
           const nextSnapshot = await getProfileProgressSnapshot(user.id)
           const unlockedAchievements = getNewlyUnlockedAchievements(previousSnapshot, nextSnapshot)
-          if (unlockedAchievements.length > 0) {
-            setAchievementUnlocks(unlockedAchievements)
-            setShowAchievementUnlockModal(true)
+          const firstStepAchievement = unlockedAchievements.find((achievement) => achievement.id === "first-steps")
+
+          if (firstStepAchievement) {
+            sessionStorage.setItem(pendingAchievementStorageKey, JSON.stringify([firstStepAchievement]))
           }
         }
       }
@@ -608,24 +631,19 @@ export default function ChallengesPage() {
     router.push("/learning")
   }
 
-  const nextChallenge = () => {
-    if (!selectedLevel) return
-
-    const nextLevel = levels.find(
-      (level) => level.level_number === selectedLevel.level_number + 1
-    )
-
-    if (nextLevel) {
-      setSelectedLevel(nextLevel)
-      loadChallenges(nextLevel.id)
-      return
-    }
-
+  const returnToChallengeList = () => {
+    setAchievementUnlocks([])
+    setShowAchievementUnlockModal(false)
     setSelectedLevel(null)
+    setSelectedLanguage(null)
     setChallenges([])
     setCurrentChallengeIndex(0)
+    setUserAnswer("")
+    setFeedback(null)
     setExecutionOutput("")
     setExecutionError("")
+    setTestCaseResults([])
+    router.push("/challenges")
   }
 
   const isLevelUnlocked = (level: ChallengeLevel) => {
@@ -854,14 +872,6 @@ export default function ChallengesPage() {
 
     return (
       <>
-        <AchievementUnlockModal
-          open={showAchievementUnlockModal}
-          achievements={achievementUnlocks}
-          onClose={() => {
-            setShowAchievementUnlockModal(false)
-            setAchievementUnlocks([])
-          }}
-        />
         <NavigationBar />
         <div className="min-h-screen bg-slate-100 p-4 md:p-8">
           <div className="max-w-3xl mx-auto">
@@ -999,9 +1009,11 @@ export default function ChallengesPage() {
 
                 <div>
                   {feedback?.correct ? (
-                    <Button onClick={nextChallenge} className="w-full bg-blue-600 text-white hover:bg-blue-700" size="lg">
-                      Next Challenge Level
-                    </Button>
+                    <div className="flex justify-end">
+                      <Button onClick={returnToChallengeList} className="bg-blue-600 text-white hover:bg-blue-700" size="lg">
+                        OK
+                      </Button>
+                    </div>
                   ) : (
                     <div className="space-y-3">
                       {feedback && !feedback.correct && (
@@ -1027,6 +1039,14 @@ export default function ChallengesPage() {
   // Main challenge list view (with difficulty filter and inline language buttons)
   return (
     <>
+      <AchievementUnlockModal
+        open={showAchievementUnlockModal}
+        achievements={achievementUnlocks}
+        onClose={() => {
+          setShowAchievementUnlockModal(false)
+          setAchievementUnlocks([])
+        }}
+      />
       <NavigationBar />
       <div className="min-h-screen bg-slate-100 p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
