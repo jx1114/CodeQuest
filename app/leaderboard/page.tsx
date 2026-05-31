@@ -80,8 +80,9 @@ export default function LeaderboardPage() {
     }))
   }
 
-  const boardRows = getLeaderboardRows()
-  const userEntry = boardRows.find((e) => e.userId === currentUser?.id)
+  const allRows = getLeaderboardRows()
+  const boardRows = allRows.slice(0, 10)
+  const userEntry = allRows.find((e) => e.userId === currentUser?.id)
   const valueHeader = "Total XP"
 
   const getRankIcon = (rank: number) => {
