@@ -73,8 +73,18 @@ export default function HomePage() {
           <Button size="lg" asChild className="bg-[#4b1279] text-white transition-transform hover:scale-105 active:scale-110">
             <Link href="/auth/sign-up">Get Started Free</Link>
           </Button>
-          <Button size="lg" className="bg-white text-black transition-transform hover:scale-105 active:scale-110">
-            Watch Demo
+          <Button
+            size="lg"
+            asChild
+            className="bg-white text-black transition-transform hover:scale-105 active:scale-110"
+          >
+            <Link
+              href="https://youtu.be/PjhenyB2_00?si=xw3JcNCi-kuXa6Vk"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Watch Demo
+            </Link>
           </Button>
         </div>
       </section>
